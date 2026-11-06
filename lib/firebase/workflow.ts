@@ -182,6 +182,7 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
     }
     case "item_equip":
     case "item_unequip":
+    case "item_carry":
     case "item_consume": {
       await character();
       const row=await object(target);
@@ -190,6 +191,9 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
         demand(row.catalog_id && row.consumable===true,"Este item não é consumível.");
         if(row.quantity===1) db.delete("items",row.id);
         else db.put("items",row.id,{...row,quantity:row.quantity-1});
+      } else if(action==="item_carry") {
+        demand(!row.equipped_slot && ["yes","no"].includes(p.carry),"Desequipe o item antes de alterar a carga.");
+        db.put("items",row.id,{...row,carried:p.carry==="yes"});
       } else if(action==="item_unequip") {
         demand(row.equipped_slot,"Este item não está equipado.");
         db.put("items",row.id,{...row,equipped_slot:null});
@@ -201,7 +205,7 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
           const {id,...copy}=row;
           db.put("items",uuid(),{...copy,quantity:row.quantity-1});
         }
-        db.put("items",row.id,{...row,quantity:1,equipped_slot:slot});
+        db.put("items",row.id,{...row,quantity:1,equipped_slot:slot,carried:true});
       }
       break;
     }

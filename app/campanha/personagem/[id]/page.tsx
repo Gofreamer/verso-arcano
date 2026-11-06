@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { Pencil, UserRound } from "lucide-react";
 import { Equipment, Inventory } from "@/components/inventory";
+import { InventorySelection } from "@/components/inventory-grid";
 import { BasicForm } from "@/components/sheet";
 import { SheetNavigation } from "@/components/sheet-navigation";
 import { Cmd, Empty, Field, Panel, Select, Status, localDate } from "@/components/ui";
@@ -16,7 +17,7 @@ const sections = [
 ];
 
 export default async function Character({ params, searchParams }: {
-  params: Promise<{id:string}>; searchParams: Promise<{aba?:string; editar?:string; busca?:string; categoria?:string; raridade?:string; estado?:string}>;
+  params: Promise<{id:string}>; searchParams: Promise<{aba?:string; editar?:string}>;
 }) {
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
@@ -55,7 +56,7 @@ export default async function Character({ params, searchParams }: {
       </div>
       <div className="quick"><span>Nível <b>{sheet.level}</b></span><span>Energia <b>{sheet.energy}</b></span><Status state={sheet.state}/></div>
     </header>
-    <div className="field-columns">
+    <InventorySelection><div className="field-columns">
       <aside className="field-identity" aria-label="Resumo do personagem">
         <Panel title="Identidade">
           <div className="field-portrait">
@@ -96,7 +97,7 @@ export default async function Character({ params, searchParams }: {
           }) : <Empty>O mestre ainda não definiu as perícias da campanha.</Empty>}
           {master && <Link className="field-edit" href="/campanha/mestre/configuracoes#config-2">Configurar perícias da campanha</Link>}
         </Panel>}
-        {aba === "inventario" && <Inventory character={id} items={itemOptions} query={query}/>}
+        {aba === "inventario" && <Inventory character={id} items={itemOptions}/>}
         {aba === "canalizadores" && <Panel title="Canalizadores mágicos">
           {!bonds.length && <Empty>Nenhum vínculo registrado. Um juramento confirmado registra o primeiro canalizador.</Empty>}
           {bonds.map(bond => <div className="record" key={bond.id}>
@@ -147,6 +148,7 @@ export default async function Character({ params, searchParams }: {
         </Panel>}
       </div>
     </div>
+    </InventorySelection>
     <SheetNavigation sections={sections} current={aba}/>
   </div>;
 }
