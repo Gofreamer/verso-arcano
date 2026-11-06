@@ -167,7 +167,7 @@ blockquote{margin:.8rem 0;padding:.75rem 1rem;border-left:2px solid #a58554;back
   margin-bottom: 1.25rem;
 }
 .field-heading h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 720; letter-spacing: -.025em }
-.field-heading .eyebrow { margin-top: .85rem }
+.field-heading .eyebrow { display: block; margin-top: .85rem }
 .field-heading .quick { margin: 0 0 .55rem }
 .field-columns { display: grid; grid-template-columns: minmax(170px, 230px) minmax(0, 1fr); gap: 1rem }
 .field-identity, .field-content { min-width: 0 }
