@@ -51,11 +51,17 @@ test("campanha: aprovações, isolamento, juramentos, histórico e maestria", as
   await assert.rejects(run("player","spell_save",{...proposal,proposed_cost:"-1"}),/Valor numérico/);
   const {id:spell}=await run("player","spell_save",{...proposal,status:"approved"});
   const pending=await run("player","submit",{id:spell});
+  const privateResult={mestre:{observacao:"Alerta privado"},imersiva:{manifestacao:"Rascunho da IA"}};
+  db.put("ai_analyses",pending.review!,{review_id:pending.review,result:privateResult});
+  assert.deepEqual((await player.from("ai_analyses").eq("id",pending.review!)).data,[]);
+  assert.deepEqual((await database({id:"master",master:true},db).from("ai_analyses").single()).data?.result,privateResult);
+  assert.equal((await player.from("spell_reviews").eq("id",pending.review!).single()).data?.immersive,undefined);
   await assert.rejects(run("player","spell_save",{...proposal,id:spell}),/revisão/);
   await assert.rejects(run("player","review",{id:spell,decision:"approved"}),/reservada/);
   const {id:advanced}=await run("master","tier",{name:"Elevado",rank:"1",limits:"Campanha",max_range:"100",max_duration:"10",max_cost:"20"});
   const approval={id:spell,review_id:pending.review!,decision:"approved",tier:initialTier.id,effect:"Ilumina um passo",
-    limitations:"Escuridão comum",range:"2",duration:"1",cost:"1",cooldown:"Uma rodada",damage:"1d4"};
+    limitations:"Escuridão comum",range:"2",duration:"1",cost:"1",cooldown:"Uma rodada",damage:"1d4",
+    immersive_name:"Luz da Brasa",manifestation:"O carvão se acende.",immersive_description:"A luz morna ilumina um passo."};
   await assert.rejects(run("master","review",{...approval,tier:advanced}),/Tier acima/);
   await assert.rejects(run("master","review",{...approval,range:"999"}),/limites/);
   await run("master","review",approval);
@@ -68,16 +74,22 @@ test("campanha: aprovações, isolamento, juramentos, histórico e maestria", as
   assert.equal(approved?.snapshot.approval.cost,1);
   assert.equal(approved?.snapshot.approval.damage,"1d4");
   assert.equal(approved?.snapshot.approval.effect,approval.effect);
+  assert.deepEqual(approved?.snapshot.approval.immersive,{
+    name:approval.immersive_name,manifestation:approval.manifestation,description:approval.immersive_description,
+  });
+  assert.doesNotMatch(JSON.stringify(approved),/Alerta privado|Rascunho da IA/);
+  assert.deepEqual((await player.from("ai_analyses")).data,[]);
   assert.deepEqual((await stranger.from("spell_versions").eq("spell_id",spell)).data,[]);
 
   const {id:mastery}=await run("player","spell_save",{...proposal,kind:"mastery",parent:spell,formula:"Da brasa, faz-se o clarão."});
   const masteryRequest=await run("player","submit",{id:mastery},true);
   await run("master","manual",{id:mastery});
-  await run("master","review",{...approval,id:mastery,review_id:masteryRequest.review!,range:"999",damage:"99d6",cooldown:"Nenhuma"});
+  await run("master","review",{...approval,id:mastery,review_id:masteryRequest.review!,range:"999",damage:"99d6",cooldown:"Nenhuma",immersive_description:"Outro efeito"});
   const masteryApproval=await db.get("spell_reviews",masteryRequest.review!);
   assert.equal(masteryApproval?.range_m,2);
   assert.equal(masteryApproval?.damage,"1d4");
   assert.equal(masteryApproval?.cooldown,"Uma rodada");
+  assert.equal(masteryApproval?.immersive.description,approval.immersive_description);
 
   const {id:revision}=await run("player","spell_save",{...proposal,kind:"revision",parent:spell});
   const first=await run("player","submit",{id:revision});
@@ -86,6 +98,7 @@ test("campanha: aprovações, isolamento, juramentos, histórico e maestria", as
   const second=await run("player","submit",{id:revision});
   await assert.rejects(run("master","review",{id:revision,review_id:first.review!,decision:"rejected",feedback:"Teste"}),/mudou/);
   await run("master","review",{id:revision,review_id:second.review!,decision:"rejected",feedback:"A fonte já se apagou."});
+  assert.equal((await player.from("spell_reviews").eq("id",second.review!).single()).data?.immersive,undefined);
   assert.equal((await player.from("spell_versions").eq("spell_id",revision)).data?.length,2);
 
   const [bond]=await db.list("bonds");

@@ -291,6 +291,11 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
           cooldown:inherited ? inherited.cooldown ?? "" : text("cooldown",160),
           damage:inherited ? inherited.damage ?? "" : text("damage",160),
         };
+        final.immersive=inherited?.immersive ?? {
+          name:inherited ? spell.name : text("immersive_name",120) || spell.name,
+          manifestation:inherited ? "" : text("manifestation",4000),
+          description:(inherited ? "" : text("immersive_description",4000)) || final.effect,
+        };
         demand(Number(final.range_m)<=range && Number(final.duration_turns)<=duration && Number(final.cost)<=cost,
           "A fórmula de referência excede os limites atuais.");
       }
