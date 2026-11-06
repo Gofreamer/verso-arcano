@@ -68,7 +68,7 @@ function TierForm({tier}: {tier?:{id:string;name:string;rank:number;limits:strin
   </Cmd>;
 }
 
-function SkillForm({skill}: {skill?:{id:string;name:string;minimum:number;maximum:number;baseline:number;description?:string}}) {
+function SkillForm({skill}: {skill?:{id:string;name:string;minimum:number;maximum:number;baseline:number;category?:string;description?:string}}) {
   return <Cmd name="attribute_def" values={{id:skill?.id ?? ""}} submit="Salvar perícia">
     <div className="fields">
       <Field name="name" label="Nome" value={skill?.name} max={80} required/>
@@ -76,6 +76,7 @@ function SkillForm({skill}: {skill?:{id:string;name:string;minimum:number;maximu
       <Field name="maximum" label="Máximo" value={skill?.maximum} type="number" required/>
       <Field name="baseline" label="Valor inicial" value={skill?.baseline} type="number" required/>
     </div>
+    <Field name="category" label="Categoria (opcional)" value={skill?.category} max={80}/>
     <Field name="description" label="O que esta perícia cobre" value={skill?.description} max={1000} area/>
   </Cmd>;
 }

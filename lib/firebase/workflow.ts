@@ -100,9 +100,12 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
         appearance:text("appearance",3000),updated_at:timestamp,
       };
       cid=target;
-      if(p.id) db.put("characters",target,{...await character(),...data});
+      if(p.id) {
+        const {level,xp,...previous}=await character();
+        db.put("characters",target,{...previous,...data});
+      }
       else db.put("characters",target,{
-        ...data,owner_id:actor,level:1,xp:0,energy:0,state:"Ativo",progression:"",
+        ...data,owner_id:actor,energy:0,state:"Ativo",progression:"",
         max_tier:(await settings()).starter_tier,created_at:timestamp,
       });
       break;
@@ -135,7 +138,7 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       const [defs,values]=await Promise.all([db.list("attribute_defs"),db.list("attributes",{field:"definition_id",value:target})]);
       demand(!defs.some(row=>row.id!==target && row.name===name),"Já existe uma perícia com esse nome.");
       demand(values.every(row=>row.value>=minimum && row.value<=maximum),"Ajuste primeiro os valores fora da nova faixa.");
-      db.put("attribute_defs",target,{name,minimum,maximum,baseline,description:text("description",1000)});
+      db.put("attribute_defs",target,{name,minimum,maximum,baseline,category:text("category",80),description:text("description",1000)});
       break;
     }
     case "attribute": {
@@ -145,9 +148,9 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       break;
     }
     case "progress": {
-      const ch=await character();
+      const {level,xp,...ch}=await character();
       await tier(p.max_tier);
-      db.put("characters",cid,{...ch,max_tier:p.max_tier,level:int("level",1),xp:int("xp"),energy:int("energy"),
+      db.put("characters",cid,{...ch,max_tier:p.max_tier,energy:int("energy"),
         state:text("state",100,true),progression:text("progression",8000),updated_at:timestamp});
       break;
     }

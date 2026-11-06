@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { Pencil, UserRound } from "lucide-react";
 import { Equipment, Inventory } from "@/components/inventory";
+import { SkillCard } from "@/components/skill-card";
 import { InventorySelection } from "@/components/inventory-grid";
 import { BasicForm } from "@/components/sheet";
 import { SheetNavigation } from "@/components/sheet-navigation";
@@ -45,6 +46,8 @@ export default async function Character({ params, searchParams }: {
     ? read(await db.from("audit").select("target_id,details").eq("action","oath_decide").in("target_id",oathRows.map(oath => oath.id))) : [];
   const defs = aba === "pericias" ? read(await db.from("attribute_defs").select("*").order("name")) : [];
   const skills = aba === "pericias" ? read(await db.from("attributes").select("*").eq("character_id",id)) : [];
+  const skillGroups = [...new Set(defs.map(def => def.category || ""))]
+    .sort((a,b) => a ? (b ? a.localeCompare(b,"pt-BR") : -1) : Number(Boolean(b)));
   const settings = ["grimorio","progressao"].includes(aba) ? read<{require_bond:boolean;min_verses:number;progression:string}>(await db.from("settings").select("*").single()) : null;
   const character = {character:id};
   const itemName = (itemId: string) => itemRows.find(item => item.id === itemId)?.name ?? "Objeto registrado";
@@ -54,7 +57,7 @@ export default async function Character({ params, searchParams }: {
         <p className="eyebrow">Arquivo de campanha / {section.label}</p><h1>{sheet.name}</h1>
         <p>{[sheet.species,sheet.origin].filter(Boolean).join(" · ") || "Identidade em construção"}</p>
       </div>
-      <div className="quick"><span>Nível <b>{sheet.level}</b></span><span>Energia <b>{sheet.energy}</b></span><Status state={sheet.state}/></div>
+      <div className="quick"><span>Energia <b>{sheet.energy}</b></span><Status state={sheet.state}/></div>
     </header>
     <InventorySelection><div className="field-columns">
       <aside className="field-identity" aria-label="Resumo do personagem">
@@ -86,16 +89,20 @@ export default async function Character({ params, searchParams }: {
           </>}
         </Panel>}
         {aba === "pericias" && <Panel title="Perícias">
-          {defs.length ? defs.map(def => {
-            const value = skills.find(entry => entry.definition_id === def.id)?.value ?? def.baseline;
-            return <div className="record" key={def.id}><h3>{def.name} <span className="badge">{value}</span></h3>
-              {def.description && <p className="verbatim">{def.description}</p>}
-              <p>Faixa de {def.minimum} a {def.maximum}</p>
-              {master && <details><summary>Editar valor da perícia</summary><Cmd name="attribute" values={{...character,id:def.id}} submit="Salvar perícia" collapseOnSuccess>
-                <Field name="value" label="Valor" type="number" value={value} min={def.minimum} required/>
-              </Cmd></details>}</div>;
-          }) : <Empty>O mestre ainda não definiu as perícias da campanha.</Empty>}
-          {master && <Link className="field-edit" href="/campanha/mestre/configuracoes#config-2">Configurar perícias da campanha</Link>}
+          {defs.length ? skillGroups.map(category => <section className="skill-group" key={category}>
+            {(category || skillGroups.length > 1) && <h3>{category || "Sem categoria"}</h3>}
+            <div className="skill-grid">{defs.filter(def => (def.category || "") === category).map(def => {
+              const value = skills.find(entry => entry.definition_id === def.id)?.value ?? def.baseline;
+              return <SkillCard key={def.id} name={def.name} category={def.category} value={value} maximum={def.maximum}>
+                {def.description && <p className="verbatim">{def.description}</p>}
+                <p>Valor atual <b>{value}</b> · Faixa de {def.minimum} a {def.maximum}</p>
+                {master && <details><summary>Editar valor</summary><Cmd name="attribute" values={{...character,id:def.id}} submit="Salvar perícia" collapseOnSuccess>
+                  <Field name="value" label="Valor" type="number" value={value} min={def.minimum} required/>
+                </Cmd></details>}
+              </SkillCard>;
+            })}</div>
+          </section>) : <Empty>O mestre ainda não definiu as perícias da campanha.</Empty>}
+          {master && <Link className="field-edit skill-config" href="/campanha/mestre/configuracoes#config-2">Configurar perícias da campanha</Link>}
         </Panel>}
         {aba === "inventario" && <Inventory character={id} items={itemOptions} master={master}/>}
         {aba === "canalizadores" && <Panel title="Canalizadores mágicos">
@@ -132,13 +139,11 @@ export default async function Character({ params, searchParams }: {
         </Panel>}
         {aba === "grimorio" && settings && <Grimoire character={id} tiers={tiers} cap={cap} items={itemRows} bonds={bonds} requireBond={settings.require_bond} minVerses={settings.min_verses}/>}
         {aba === "progressao" && settings && <Panel title="Progressão e recursos">
-          <p>Nível {sheet.level} · {sheet.xp} XP · {sheet.energy} de energia</p>
+          <p>{sheet.energy} de energia</p>
           {sheet.progression && <p className="verbatim">{sheet.progression}</p>}
           {settings.progression && <p className="verbatim">Regras da campanha: {settings.progression}</p>}
           {master && <Cmd name="progress" values={character} submit="Salvar progressão">
             <div className="fields">
-              <Field name="level" label="Nível" type="number" min={1} value={sheet.level} required/>
-              <Field name="xp" label="Experiência" type="number" min={0} value={sheet.xp} required/>
               <Field name="energy" label="Energia" type="number" min={0} value={sheet.energy} required/>
               <Field name="state" label="Estado" value={sheet.state} max={100} required/>
               <Select name="max_tier" label="Tier máximo" options={tiers} value={sheet.max_tier}/>

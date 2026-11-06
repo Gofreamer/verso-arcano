@@ -23,7 +23,8 @@ test("campanha: aprovações, isolamento, juramentos, histórico e maestria", as
   const player=database({id:"player",master:false},db);
   const stranger=database({id:"stranger",master:false},db);
   const {id:character}=await run("player","character",{name:"Iara",level:"99",owner_id:"stranger"});
-  assert.equal((await db.get("characters",character))?.level,1);
+  assert.equal((await db.get("characters",character))?.level,undefined);
+  assert.equal((await db.get("characters",character))?.xp,undefined);
   assert.equal((await stranger.from("characters").eq("id",character).maybeSingle()).data,null);
   await assert.rejects(run("stranger","character",{id:character,name:"Falso"}),/indisponível/);
   await assert.rejects(run("player","progress",{character,level:"99"}),/reservada/);

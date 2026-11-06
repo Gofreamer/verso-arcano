@@ -30,7 +30,7 @@ type CollectionRows = {
     rarity?:string;weight?:number;tags?:string;slots?:string[];consumable?:boolean;equipped_slot?:string|null;carried?:boolean};
   item_catalog: {id:string;name:string;category:string;rarity:string;weight:number;description:string;consumable:boolean;stack_limit:number;image_url?:string};
   bonds: {id:string;item_id:string;status:string};
-  attribute_defs: {id:string;name:string;minimum:number;maximum:number;baseline:number;description?:string};
+  attribute_defs: {id:string;name:string;minimum:number;maximum:number;baseline:number;category?:string;description?:string};
   lore: {id:string;title:string;body:string;published:boolean};
 };
 type Row<C extends string> = Document & (C extends keyof CollectionRows ? CollectionRows[C] : object);

@@ -82,7 +82,7 @@ export async function analyze(db: ReturnType<typeof database>, spellId: string, 
   try {
     const [spellRes, chRes, tiersRes, rulesRes, bondsRes] = await Promise.all([
       db.from("spells").select("name,formula,intention,description,kind").eq("id",spellId).single(),
-      db.from("characters").select("species,level,energy,max_tier").eq("id",character).single(),
+      db.from("characters").select("species,energy,max_tier").eq("id",character).single(),
       db.from("tiers").select("*").order("rank"),
       db.from("settings").select("min_verses,require_bond,starter_tier").single(),
       db.from("bonds").select("item_id").eq("character_id",character).eq("status","active"),
