@@ -5,7 +5,7 @@ import { transact, type Document, type Writer } from "./firestore";
 
 export class CampaignError extends Error {}
 
-const masterOnly = new Set(["tier","settings","lore","role","attribute_def","progress","attribute","item","oath_decide","bond_end","review","manual"]);
+const masterOnly = new Set(["tier","settings","lore","role","attribute_def","progress","attribute","item","oath_decide","bond_end","review","manual","grant_spell"]);
 const now = () => new Date().toISOString();
 const uuid = () => crypto.randomUUID();
 function demand(condition:unknown,message:string):asserts condition {
@@ -197,6 +197,26 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       db.put("items",row.id,{...row,quantity:0});
       break;
     }
+    case "grant_spell": {
+      const ch=await character();
+      const id=uuid(), review=uuid();
+      const scope={...attach(ch),created_at:timestamp};
+      const image_url=text("image_url",2000);
+      demand(!image_url || (image_url.startsWith("https://") && z.url().safeParse(image_url).success),"Informe uma URL HTTPS para a imagem ou GIF.");
+      db.put("spells",id,{
+        ...scope,kind:"grant",status:"approved",review_id:review,updated_at:timestamp,
+        name:text("name",120,true),category:text("category",60,true),description:text("description",4000),
+        image_url,formula:text("formula",6000,false,true),
+      });
+      db.put("spell_reviews",review,{
+        ...scope,spell_id:id,decision:"approved",decided_at:timestamp,cost:int("cost"),
+        cooldown:text("cooldown",160),duration_label:text("duration_label",160),damage:text("damage",160),
+        effect:text("effect",4000,true),limitations:text("limitations",4000),
+      });
+      result={id,character:cid,review};
+      decision="approved";
+      break;
+    }
     case "submit": {
       const previous=p.id ? await currentSpell() : null;
       const ch=await character();
@@ -217,7 +237,7 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       if(kind!=="original") {
         demand(["mastery","revision"].includes(kind),"Tipo de fórmula inválido.");
         const parent=await find("spells",previous?.parent_id ?? p.parent,"Magia de referência indisponível.");
-        demand(parent.character_id===cid && parent.status==="approved","Escolha uma magia aprovada desta ficha.");
+        demand(parent.character_id===cid && parent.status==="approved" && parent.kind!=="grant","Escolha um encantamento aprovado desta ficha.");
         parent_id=parent.id;
       }
       const spell={...attach(ch),...data,parent_id,kind,feedback:"",created_at:previous?.created_at ?? timestamp};
@@ -299,7 +319,7 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
     default: throw new CampaignError("Comando inválido.");
   }
   if(masterOnly.has(action) || (master && action==="character") || ["oath","submit"].includes(action)) {
-    audit(action,p.id || (["progress","attribute"].includes(action)?cid:target),{
+    audit(action,action==="grant_spell" ? result.id : p.id || (["progress","attribute"].includes(action)?cid:target),{
       character:cid,decision,notes:action==="oath_decide"?text("notes",4000):undefined,
     });
   }

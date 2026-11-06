@@ -103,6 +103,18 @@ test("campanha: aprovações, isolamento, juramentos, histórico e maestria", as
   assert.equal((await player.from("spell_reviews").eq("id",second.review!).single()).data?.consequence,"A cinza esfria entre seus dedos.");
   assert.deepEqual(await db.list("spell_versions"),[]);
 
+  const grant={character,name:"Passo de Névoa",category:"Técnica",cost:"7",
+    duration_label:"Instantânea",damage:"1d6",effect:"Atravessa uma cortina de névoa."};
+  await assert.rejects(run("player","grant_spell",grant),/reservada/);
+  const gifted=await run("master","grant_spell",grant);
+  const grantedSpell=(await player.from("spells").eq("id",gifted.id).single()).data;
+  const grantedReview=(await player.from("spell_reviews").eq("id",gifted.review!).single()).data;
+  assert.equal(grantedSpell?.status,"approved");
+  assert.equal(grantedSpell?.formula,"");
+  assert.equal(grantedReview?.cost,7);
+  assert.equal(grantedReview?.duration_label,"Instantânea");
+  assert.deepEqual((await stranger.from("spells").eq("id",gifted.id)).data,[]);
+
   const [bond]=await db.list("bonds");
   await run("master","bond_end",{character,id:bond.id});
   assert.equal((await db.get("items",item.id))?.quantity,0);

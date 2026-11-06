@@ -75,6 +75,7 @@ export async function command(action:string,_:FormState,form:FormData):Promise<F
     return {ok:false,message:error instanceof CampaignError ? error.message : "Registro indisponível. Confira os campos e tente novamente."};
   }
   let message="Registro atualizado.";
+  if(action==="grant_spell") message="Habilidade concedida ao personagem.";
   if(action==="submit") {
     const completed=useAi && await analyze(db,data.id,data.review!,data.character!).catch(()=>false);
     message=completed?"Análise registrada. Aguardando decisão do mestre."

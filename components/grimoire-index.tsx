@@ -17,7 +17,7 @@ type Entry = {
   badge:ReactNode; detail:ReactNode;
 };
 
-export function GrimoireIndex({ entries, composer }: {entries:Entry[]; composer:ReactNode}) {
+export function GrimoireIndex({ entries, composer, grantForm }: {entries:Entry[]; composer:ReactNode; grantForm?:ReactNode}) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [selected, setSelected] = useState("");
@@ -25,7 +25,8 @@ export function GrimoireIndex({ entries, composer }: {entries:Entry[]; composer:
   const title = useId();
   const entry = entries.find(item => item.id === selected);
   const composing = selected === "compose";
-  const visible = composing || Boolean(entry);
+  const granting = selected === "grant" && Boolean(grantForm);
+  const visible = composing || granting || Boolean(entry);
   const categories = [...new Set(entries.map(item => item.category))].sort((a,b) => a.localeCompare(b,"pt-BR"));
   const search = query.trim().toLocaleLowerCase("pt-BR");
   const matches = entries.filter(item => (!category || item.category === category)
@@ -51,7 +52,10 @@ export function GrimoireIndex({ entries, composer }: {entries:Entry[]; composer:
 
   return <section className="panel spell-index">
     <div className="toolbar"><h2>Grimório <small>· {entries.length} registros</small></h2>
-      <button className="button" type="button" onClick={() => setSelected("compose")}><Plus size={16}/> Criar encantamento</button>
+      <div className="quick">
+        <button className="button" type="button" onClick={() => setSelected("compose")}><Plus size={16}/> Criar encantamento</button>
+        {grantForm && <button className="button" type="button" onClick={() => setSelected("grant")}>Dar</button>}
+      </div>
     </div>
     {entries.length > 0 && <div className="spell-filters">
       <input type="search" aria-label="Pesquisar encantamento" placeholder="Pesquisar por nome ou tipo…" value={query} onChange={event => setQuery(event.target.value)}/>
@@ -79,10 +83,10 @@ export function GrimoireIndex({ entries, composer }: {entries:Entry[]; composer:
     {!matches.length && <p className="muted">{entries.length ? "Nenhum encantamento corresponde à busca." : "Seu grimório está vazio. Crie um encantamento para começar."}</p>}
     <dialog ref={dialog} className="spell-dialog" aria-labelledby={title} onClose={close}>
       {visible && <><header className="spell-dialog-header">
-        <h2 id={title}>{composing ? "Criar encantamento" : "Registro de encantamento"}</h2>
+        <h2 id={title}>{granting ? "Nova habilidade" : composing ? "Criar encantamento" : "Registro de encantamento"}</h2>
         <button type="button" className="link-button" aria-label="Fechar janela" onClick={() => dialog.current?.close()}><X size={22}/></button>
       </header>
-      <div className="spell-dialog-body">{composing ? composer : entry?.detail}</div></>}
+      <div className="spell-dialog-body">{granting ? grantForm : composing ? composer : entry?.detail}</div></>}
     </dialog>
   </section>;
 }

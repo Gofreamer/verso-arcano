@@ -1,14 +1,15 @@
-import { SpellForm } from "@/components/sheet";
+import { GrantSpellForm, SpellForm } from "@/components/sheet";
 import { Cmd, Field, Select, Status } from "@/components/ui";
 import { GrimoireIndex, SpellMedia } from "@/components/grimoire-index";
 import { RejectionConsequence } from "@/components/rejection-consequence";
 import { read, session } from "@/lib/auth";
 import { hasAnalysis } from "@/lib/analysis";
+import { campaignCharacters } from "@/lib/campaign-characters";
 
 type Tier = {id:string;name:string;rank:number;limits:string;max_range:number;max_duration:number;max_cost:number};
 type Item = {id:string;name:string;quantity:number};
 type Bond = {item_id:string;status:string};
-const kinds: Record<string,string> = {mastery:"Maestria",revision:"Revisão",original:"Fórmula original"};
+const kinds: Record<string,string> = {mastery:"Maestria",revision:"Revisão",original:"Fórmula original",grant:"Concedida pelo mestre"};
 const reportFields: Record<string,string> = {
   rimas:"Rimas", coerencia:"Coerência", intencao:"Clareza da intenção", metaforas:"Metáforas", relacao:"Relação com a magia",
   fenomeno:"Fenômeno", tipo:"Tipo de efeito", usos:"Usos possíveis", consequencias:"Consequências", limitacoes:"Limitações",
@@ -20,6 +21,7 @@ export async function Grimoire({character, tiers, cap, items, bonds, requireBond
   character:string; tiers:Tier[]; cap?:Tier; items:Item[]; bonds:Bond[]; requireBond:boolean; minVerses:number;
 }) {
   const { db, master } = await session();
+  const grantForm = master ? <GrantSpellForm character={character} characters={await campaignCharacters()}/> : undefined;
   const analysisEnabled = hasAnalysis();
   const spells = read(await db.from("spells").select("*").eq("character_id",character).order("updated_at",{ascending:false}))
     .filter(spell => spell.status !== "draft");
@@ -40,6 +42,7 @@ export async function Grimoire({character, tiers, cap, items, bonds, requireBond
     const available = bound && review && tier && cap && tier.rank <= cap.rank && review.range_m <= Math.min(tier.max_range,cap.max_range)
       && review.duration_turns <= Math.min(tier.max_duration,cap.max_duration) && review.cost <= Math.min(tier.max_cost,cap.max_cost);
     const official = spell.status === "approved";
+    const granted = spell.kind === "grant";
     const immersive = official && review?.decision === "approved" ? review.immersive : undefined;
     const tierName = review?.tier_name ?? tier?.name;
     const name = immersive?.name ?? spell.name;
@@ -57,7 +60,7 @@ export async function Grimoire({character, tiers, cap, items, bonds, requireBond
       <dl className="spell-stats">
         <div><dt>Custo em Mana</dt><dd>{stats?.cost == null ? "—" : stats.cost + " Mana"}</dd></div>
         <div><dt>Recarga</dt><dd>{stats?.cooldown || "—"}</dd></div>
-        <div><dt>Duração</dt><dd>{duration == null ? "—" : duration + " turno(s)"}</dd></div>
+        <div><dt>Duração</dt><dd>{granted ? review?.duration_label || "—" : duration == null ? "—" : duration + " turno(s)"}</dd></div>
         <div><dt>Dano</dt><dd>{stats?.damage || "—"}</dd></div>
       </dl>
       {immersive && <div className="spell-block">
@@ -78,15 +81,15 @@ export async function Grimoire({character, tiers, cap, items, bonds, requireBond
       {!official && stats && <p className="muted">Valores propostos, sujeitos à aprovação do mestre.</p>}
       {!immersive && stats?.effect && <div className="spell-block"><h4>{official ? "Efeito registrado" : "Efeito proposto"}</h4><p className="verbatim">{stats.effect}</p></div>}
       {!immersive && stats?.limitations && <div className="spell-block"><h4>Condições e limitações</h4><p className="verbatim">{stats.limitations}</p></div>}
-      <div className="spell-block"><h4>Fórmula poética</h4>
-      <blockquote>{spell.formula}</blockquote>
-      <p className="verbatim"><b>Intenção:</b> {spell.intention}</p>
-      {spell.item_id && <p>Canalizador: {items.find(i => i.id === spell.item_id)?.name}</p>}
-      </div>
+      {(spell.formula || spell.intention || spell.item_id) && <div className="spell-block"><h4>Fórmula poética</h4>
+        {spell.formula && <blockquote>{spell.formula}</blockquote>}
+        {spell.intention && <p className="verbatim"><b>Intenção:</b> {spell.intention}</p>}
+        {spell.item_id && <p>Canalizador: {items.find(i => i.id === spell.item_id)?.name}</p>}
+      </div>}
       {spell.feedback && <p className="notice verbatim"><b>Retorno do mestre:</b> {spell.feedback}</p>}
       {spell.status === "rejected" && review?.decision === "rejected" && review.consequence &&
         <div className="spell-block"><h4>Consequência da recusa</h4><p className="verbatim">{review.consequence}</p></div>}
-      {spell.status === "approved" && review && <div className="approved">
+      {official && review && !granted && <div className="approved">
         {!immersive && <p>{tierName} · Alcance de {review.range_m} m</p>}
         {!available && <p className="notice">Indisponível para execução com os limites ou vínculos atuais.</p>}
         <details><summary>Solicitar revisão ou maestria</summary>
@@ -153,7 +156,7 @@ export async function Grimoire({character, tiers, cap, items, bonds, requireBond
     return {id:spell.id,name,category,image:spell.image_url,cost:stats?.cost,official,badge:<Status state={spell.status}/>,detail};
   }
 
-  return <GrimoireIndex entries={spells.map(renderSpell)} composer={<>
+  return <GrimoireIndex entries={spells.map(renderSpell)} grantForm={grantForm} composer={<>
     <p>Escreva pelo menos {minVerses} versos, um por linha, e descreva a intenção do encantamento.</p>
     {analysisEnabled && <p>Ao enviar, a IA analisa a proposta para o mestre.</p>}
     <SpellForm character={character} items={eligibleItems}/>

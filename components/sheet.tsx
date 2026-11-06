@@ -23,6 +23,29 @@ type Spell = Partial<{
   proposal:Partial<{cost:number|null;duration:number|null;cooldown:string;damage:string;effect:string;limitations:string}>;
 }>;
 type Option = {id:string;name:string};
+
+const grantTypes=["Habilidade","Técnica","Passiva","Ultimate","Transformação","Domínio","Outra"];
+export function GrantSpellForm({character, characters}: {character:string; characters:Option[]}) {
+  return <Cmd name="grant_spell" submit="Dar habilidade">
+    <Select name="character" label="Personagem" value={character} options={characters}/>
+    <div className="fields">
+      <Field name="name" label="Nome" required/>
+      <Select name="category" label="Tipo" options={grantTypes.map(name=>({id:name,name}))}/>
+    </div>
+    <Field name="description" label="Descrição" max={4000} area/>
+    <Field name="image_url" label="Imagem ou GIF (URL HTTPS direta)" type="url" max={2000}/>
+    <div className="fields">
+      <Field name="cost" label="Custo em Mana" value={0} type="number" min={0} required/>
+      <Field name="cooldown" label="Recarga" max={160}/>
+      <Field name="duration_label" label="Duração" max={160}/>
+      <Field name="damage" label="Dano ou rolagem" max={160}/>
+    </div>
+    <Field name="effect" label="Efeito" max={4000} area required/>
+    <Field name="limitations" label="Condições e limitações" max={4000} area/>
+    <Field name="formula" label="Fórmula poética (opcional)" max={6000} area/>
+  </Cmd>;
+}
+
 export function SpellForm({character, items, spell = {}, parent, kind}: {
   character:string; items:Option[]; spell?:Spell; parent?:string; kind?:"revision"|"mastery"|"original";
 }) {
