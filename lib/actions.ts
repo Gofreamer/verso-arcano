@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { session } from "./auth";
-import { analyze, hasAnalysis } from "./analysis";
+import { analyze, hasAnalysis, writeConsequence } from "./analysis";
 import { configured } from "./firebase/config";
 import { applyCommand, CampaignError } from "./firebase/workflow";
 import {
@@ -43,6 +43,22 @@ export async function signOut() {
   store.delete(accessCookie);
   store.delete(refreshCookie);
   redirect("/");
+}
+
+export async function previewConsequence(spellId:string,reviewId:string,direction:string) {
+  const {db,master}=await session();
+  if (!master) return {error:"Ação reservada ao mestre."};
+  const input=z.object({spellId:z.uuid(),reviewId:z.uuid(),direction:z.string().trim().min(1).max(2000)})
+    .safeParse({spellId,reviewId,direction});
+  if (!input.success) return {error:"Descreva a consequência em até 2.000 caracteres."};
+  const {data:spell}=await db.from("spells").select("name,formula,intention,description,status,review_id").eq("id",spellId).maybeSingle();
+  if (!spell || spell.status!=="review" || spell.review_id!==reviewId) return {error:"A solicitação não está em revisão."};
+  try {
+    const {name,formula,intention,description}=spell;
+    return {text:await writeConsequence({name,formula,intention,description},input.data.direction)};
+  } catch {
+    return {error:"A IA não gerou a prévia. Tente de novo ou escreva o texto final."};
+  }
 }
 
 export async function command(action:string,_:FormState,form:FormData):Promise<FormState> {

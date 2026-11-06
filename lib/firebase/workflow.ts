@@ -197,7 +197,7 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       db.put("items",row.id,{...row,quantity:0});
       break;
     }
-    case "spell_save": {
+    case "submit": {
       const previous=p.id ? await currentSpell() : null;
       const ch=await character();
       if(item) await object(item);
@@ -211,38 +211,28 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       };
       const data={name:text("name",120,true),formula:text("formula",6000,true,true),intention:text("intention",4000,true),
         description:text("description",4000),category:text("category",60),image_url,proposal,item_id:item,updated_at:timestamp};
-      if(previous) {
-        demand(["draft","changes"].includes(previous.status),"Crie uma revisão para alterar uma fórmula registrada.");
-        db.put("spells",target,{...previous,...data});
-      } else {
-        const kind=p.kind || "original";
-        let parent_id=null;
-        if(kind!=="original") {
-          demand(["mastery","revision"].includes(kind),"Tipo de fórmula inválido.");
-          const parent=await find("spells",p.parent,"Magia de referência indisponível.");
-          demand(parent.character_id===cid && parent.status==="approved","Escolha uma magia aprovada desta ficha.");
-          parent_id=parent.id;
-        }
-        db.put("spells",target,{...attach(ch),...data,parent_id,kind,status:"draft",feedback:"",created_at:timestamp});
+      if(previous) demand(["draft","changes"].includes(previous.status),"Crie uma revisão para alterar uma fórmula registrada.");
+      const kind=previous?.kind ?? (p.kind || "original");
+      let parent_id=null;
+      if(kind!=="original") {
+        demand(["mastery","revision"].includes(kind),"Tipo de fórmula inválido.");
+        const parent=await find("spells",previous?.parent_id ?? p.parent,"Magia de referência indisponível.");
+        demand(parent.character_id===cid && parent.status==="approved","Escolha uma magia aprovada desta ficha.");
+        parent_id=parent.id;
       }
-      break;
-    }
-    case "submit": {
-      const spell=await currentSpell();
-      demand(["draft","changes"].includes(spell.status),"Rascunho indisponível para envio.");
+      const spell={...attach(ch),...data,parent_id,kind,feedback:"",created_at:previous?.created_at ?? timestamp};
       const count=(formula:string)=>formula.split(/\r?\n/).filter(verse=>verse.trim()).length;
       const total=count(spell.formula);
       if(spell.kind==="mastery") {
-        const parent=await find("spells",spell.parent_id,"Fórmula de referência indisponível.");
+        const parent=await find("spells",spell.parent_id ?? undefined,"Fórmula de referência indisponível.");
         demand(total>0 && total<count(parent.formula),"A fórmula de maestria precisa ter menos versos que a referência.");
       } else {
         const min=(await settings()).min_verses;
         demand(total>=min,"A fórmula precisa ter pelo menos "+min+" versos.");
       }
-      const submission=uuid(),review=uuid();
+      const review=uuid();
       const scope={character_id:cid,owner_id:spell.owner_id,spell_id:target,created_at:timestamp};
-      db.put("spell_versions",submission,{...scope,kind:"submitted",snapshot:spell});
-      db.put("spell_reviews",review,{...scope,submission_id:submission,decision:"pending"});
+      db.put("spell_reviews",review,{...scope,decision:"pending"});
       db.put("spells",target,{...spell,status:ai?"analysis":"review",review_id:review,updated_at:timestamp});
       result={id:target,character:cid,review};
       break;
@@ -299,14 +289,11 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
         demand(Number(final.range_m)<=range && Number(final.duration_turns)<=duration && Number(final.cost)<=cost,
           "A fórmula de referência excede os limites atuais.");
       }
-      const approved={...review,...final,decision,feedback,decided_at:timestamp};
+      const consequence=decision==="rejected" ? text("consequence",4000) : "";
+      const approved={...review,...final,decision,feedback,consequence,tier_name:tierName ?? null,decided_at:timestamp};
       const revised={...spell,status:decision,feedback,updated_at:timestamp};
       db.put("spell_reviews",review.id,approved);
       db.put("spells",target,revised);
-      if(decision==="approved") db.put("spell_versions",uuid(),{
-        character_id:cid,owner_id:spell.owner_id,spell_id:target,kind:"approved",
-        snapshot:{...revised,approval:approved,tier_name:tierName},created_at:timestamp,
-      });
       break;
     }
     default: throw new CampaignError("Comando inválido.");

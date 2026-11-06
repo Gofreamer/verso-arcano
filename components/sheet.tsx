@@ -26,7 +26,7 @@ type Option = {id:string;name:string};
 export function SpellForm({character, items, spell = {}, parent, kind}: {
   character:string; items:Option[]; spell?:Spell; parent?:string; kind?:"revision"|"mastery"|"original";
 }) {
-  return <Cmd name="spell_save" values={{character,id:spell.id ?? "",parent:parent ?? "",kind:kind ?? ""}} submit="Salvar rascunho" collapseOnSuccess={Boolean(spell.id)}>
+  return <Cmd name="submit" values={{character,id:spell.id ?? "",parent:parent ?? "",kind:kind ?? ""}} submit="Enviar para avaliação">
     <div className="fields">
       <Field name="name" label="Nome do encantamento" value={spell.name} required/>
       <Field name="category" label="Tipo (ex.: Técnica, Passiva)" value={spell.category} max={60}/>

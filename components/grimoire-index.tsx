@@ -64,7 +64,7 @@ export function GrimoireIndex({ entries, composer }: {entries:Entry[]; composer:
       const group = matches.filter(item => item.official === official);
       if (!group.length) return null;
       return <section className="spell-group" key={String(official)}>
-        <h3>{official ? "Encantamentos aprovados" : "Rascunhos e solicitações"}</h3>
+        <h3>{official ? "Encantamentos aprovados" : "Solicitações"}</h3>
         <div className="spell-grid">{group.map(item => <button className="spell-card" type="button" key={item.id} onClick={() => setSelected(item.id)}>
           <SpellMedia key={item.image} url={item.image} thumbnail/>
           <span className="spell-card-info">
