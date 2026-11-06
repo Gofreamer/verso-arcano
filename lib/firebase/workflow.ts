@@ -1,11 +1,12 @@
 import "server-only";
 import { z } from "zod";
+import { equipmentSlots, rarities } from "../inventory";
 import { initialSettings, isMaster, tiers } from "./data";
 import { transact, type Document, type Writer } from "./firestore";
 
 export class CampaignError extends Error {}
 
-const masterOnly = new Set(["tier","settings","lore","role","attribute_def","progress","attribute","item","oath_decide","bond_end","review","manual","grant_spell"]);
+const masterOnly = new Set(["tier","settings","lore","role","attribute_def","progress","attribute","catalog_create","catalog_grant","oath_decide","bond_end","review","manual","grant_spell"]);
 const now = () => new Date().toISOString();
 const uuid = () => crypto.randomUUID();
 function demand(condition:unknown,message:string):asserts condition {
@@ -141,13 +142,67 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
         state:text("state",100,true),progression:text("progression",8000),updated_at:timestamp});
       break;
     }
-    case "item": {
-      const ch=await character();
-      if(p.id) await object(target);
-      const image_url=text("image_url",500) || null;
+    case "catalog_create": {
+      const image_url=text("image_url",2000) || null;
       demand(!image_url || (image_url.startsWith("https://") && z.url().safeParse(image_url).success),"Informe uma URL HTTPS para a imagem.");
-      db.put("items",target,{...attach(ch),name:text("name",120,true),category:text("category",120,true),
-        quantity:int("quantity"),description:text("description",3000),image_url});
+      const rarity=text("rarity",30,true), rawWeight=text("weight",16,true), weight=Number(rawWeight);
+      demand(rarities.includes(rarity),"Selecione uma raridade válida.");
+      demand(/^\d+(\.\d{1,3})?$/.test(rawWeight) && weight<=100000,"Informe um peso válido em kg.");
+      const slots=p.equippable==="on" ? equipmentSlots.filter(slot=>p["slot_"+slot.id]==="on").map(slot=>slot.id) : [];
+      demand(p.equippable!=="on" || slots.length,"Escolha pelo menos uma posição de equipamento.");
+      const id=uuid();
+      db.put("item_catalog",id,{
+        name:text("name",120,true),category:text("category",120,true),rarity,weight,image_url,
+        description:text("description",3000),tags:text("tags",300),slots,
+        consumable:p.consumable==="on",stack_limit:p.stackable==="on" ? int("stack_limit",2,100) : 1,
+        created_at:timestamp,
+      });
+      result={id};
+      break;
+    }
+    case "catalog_grant": {
+      const ch=await character();
+      const entry=await find("item_catalog",p.id,"Item do catálogo indisponível.");
+      const quantity=int("quantity",1,100);
+      const {id,created_at,...definition}=entry;
+      const copies=await scoped("items");
+      let remaining=quantity;
+      for(const copy of copies.filter(row=>row.catalog_id===id && row.quantity>0 && row.quantity<entry.stack_limit && !row.equipped_slot)) {
+        const added=Math.min(remaining,entry.stack_limit-copy.quantity);
+        db.put("items",copy.id,{...copy,quantity:copy.quantity+added});
+        remaining-=added;
+        if(!remaining) break;
+      }
+      while(remaining>0) {
+        const amount=Math.min(remaining,entry.stack_limit);
+        db.put("items",uuid(),{...attach(ch),...definition,catalog_id:id,quantity:amount,created_at:timestamp});
+        remaining-=amount;
+      }
+      break;
+    }
+    case "item_equip":
+    case "item_unequip":
+    case "item_consume": {
+      await character();
+      const row=await object(target);
+      demand(row.quantity>0,"Item indisponível.");
+      if(action==="item_consume") {
+        demand(row.catalog_id && row.consumable===true,"Este item não é consumível.");
+        if(row.quantity===1) db.delete("items",row.id);
+        else db.put("items",row.id,{...row,quantity:row.quantity-1});
+      } else if(action==="item_unequip") {
+        demand(row.equipped_slot,"Este item não está equipado.");
+        db.put("items",row.id,{...row,equipped_slot:null});
+      } else {
+        const slot=text("slot",30,true);
+        demand(!row.equipped_slot && row.slots?.includes(slot),"Este item não pode ser equipado nessa posição.");
+        demand(!(await scoped("items")).some(copy=>copy.quantity>0 && copy.equipped_slot===slot),"Essa posição já está ocupada.");
+        if(row.quantity>1) {
+          const {id,...copy}=row;
+          db.put("items",uuid(),{...copy,quantity:row.quantity-1});
+        }
+        db.put("items",row.id,{...row,quantity:1,equipped_slot:slot});
+      }
       break;
     }
     case "oath": {
@@ -160,7 +215,7 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       const itemId=item ?? uuid();
       if(item) {
         const row=await object(item);
-        demand(row.quantity>0,"Escolha um objeto disponível na ficha.");
+        demand(row.quantity>0 && !row.consumable,"Escolha um objeto disponível que possa servir de canalizador.");
       } else {
         db.put("items",itemId,{...attach(ch),name:text("object",120,true),category:text("category",120,true),quantity:0,description:""});
       }
@@ -194,7 +249,7 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       demand(bond.character_id===cid && bond.status==="active","Vínculo indisponível.");
       const row=await object(bond.item_id);
       db.put("bonds",target,{...bond,status:"destroyed",ended_at:timestamp});
-      db.put("items",row.id,{...row,quantity:0});
+      db.put("items",row.id,{...row,quantity:0,equipped_slot:null});
       break;
     }
     case "grant_spell": {
@@ -319,7 +374,7 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
     default: throw new CampaignError("Comando inválido.");
   }
   if(masterOnly.has(action) || (master && action==="character") || ["oath","submit"].includes(action)) {
-    audit(action,action==="grant_spell" ? result.id : p.id || (["progress","attribute"].includes(action)?cid:target),{
+    audit(action,["grant_spell","catalog_create"].includes(action) ? result.id : p.id || (["progress","attribute"].includes(action)?cid:target),{
       character:cid,decision,notes:action==="oath_decide"?text("notes",4000):undefined,
     });
   }

@@ -76,6 +76,9 @@ export async function command(action:string,_:FormState,form:FormData):Promise<F
   }
   let message="Registro atualizado.";
   if(action==="grant_spell") message="Habilidade concedida ao personagem.";
+  if(action==="catalog_create") message="Item criado no catálogo.";
+  if(action==="catalog_grant") message="Item entregue ao personagem.";
+  if(action==="item_consume") message="Uma unidade foi consumida.";
   if(action==="submit") {
     const completed=useAi && await analyze(db,data.id,data.review!,data.character!).catch(()=>false);
     message=completed?"Análise registrada. Aguardando decisão do mestre."

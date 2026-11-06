@@ -16,6 +16,7 @@ test("campanha: aprovações, isolamento, juramentos, histórico e maestria", as
       return [...table(collection).values()].filter(row=>!filter || row[filter.field]===filter.value);
     },
     put(collection,id,value){table(collection).set(id,structuredClone({...value,id}));},
+    delete(collection,id){table(collection).delete(id);},
   };
   for(const uid of ["player","stranger","master"]) db.put("profiles",uid,{role:uid==="master"?"master":"player"});
   const run=(actor:string,action:string,input:Record<string,string>,ai=false)=>campaignCommand(db,actor,action,input,ai);
@@ -124,4 +125,32 @@ test("campanha: aprovações, isolamento, juramentos, histórico e maestria", as
   await run("master","lore",{id:lore,title:"Revelação",body:"Publicado",published:"true"});
   assert.equal((await publicArchive.from("lore").single()).data?.title,"Revelação");
   assert.deepEqual((await publicArchive.from("spells")).data,[]);
+
+  const potion={name:"Elixir",category:"Poção",rarity:"Raro",weight:"0.25",stackable:"on",stack_limit:"2",consumable:"on"};
+  await assert.rejects(run("player","catalog_create",potion),/reservada/);
+  const template=await run("master","catalog_create",potion);
+  assert.deepEqual((await player.from("item_catalog")).data,[]);
+  await assert.rejects(run("player","catalog_grant",{id:template.id,character,quantity:"1"}),/reservada/);
+  await run("master","catalog_grant",{id:template.id,character,quantity:"3"});
+  const potions=(await db.list("items")).filter(row=>row.catalog_id===template.id);
+  assert.deepEqual(potions.map(row=>row.quantity).sort(),[1,2]);
+  const stack=potions.find(row=>row.quantity===2)!;
+  await assert.rejects(run("stranger","item_consume",{character,id:stack.id}),/indisponível/);
+  await run("player","item_consume",{character,id:stack.id});
+  assert.equal((await db.get("items",stack.id))?.quantity,1);
+  await run("player","item_consume",{character,id:stack.id});
+  assert.equal(await db.get("items",stack.id),null);
+  assert.equal((await db.get("item_catalog",template.id))?.name,"Elixir");
+  await run("master","catalog_grant",{id:template.id,character,quantity:"1"});
+  assert.equal((await db.get("items",potions.find(row=>row.quantity===1)!.id))?.quantity,2);
+
+  const sword=await run("master","catalog_create",{name:"Espada",category:"Arma",rarity:"Comum",weight:"2",equippable:"on",slot_main:"on"});
+  await run("master","catalog_grant",{id:sword.id,character,quantity:"2"});
+  const weapons=(await db.list("items")).filter(row=>row.catalog_id===sword.id);
+  await assert.rejects(run("player","item_equip",{character,id:weapons[0].id,slot:"head"}),/posição/);
+  await run("player","item_equip",{character,id:weapons[0].id,slot:"main"});
+  await assert.rejects(run("player","item_equip",{character,id:weapons[1].id,slot:"main"}),/ocupada/);
+  await assert.rejects(run("player","item_consume",{character,id:weapons[0].id}),/consumível/);
+  await run("player","item_unequip",{character,id:weapons[0].id});
+  await run("player","item_equip",{character,id:weapons[1].id,slot:"main"});
 });

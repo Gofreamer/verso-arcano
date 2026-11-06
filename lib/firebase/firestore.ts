@@ -95,6 +95,7 @@ export interface Store {
 }
 export interface Writer extends Store {
   put(collection:string,id:string,value:object):void;
+  delete(collection:string,id:string):void;
 }
 
 function safeId(value:string) {
@@ -131,13 +132,17 @@ export const firestore = store();
 export async function transact<T>(work:(db:Writer)=>Promise<T>):Promise<T> {
   for (let attempt=0;attempt<4;attempt++) {
     const {transaction} = await request<{transaction:string}>(":beginTransaction",{});
-    const writes: {update:Encoded}[] = [];
+    const writes: ({update:Encoded} | {delete:string})[] = [];
     try {
       const result = await work({
         ...store(transaction),
         put(collection,id,value) {
           safeId(id);
           writes.push({update:{name:root()+"/"+collection+"/"+id,fields:fields(value)}});
+        },
+        delete(collection,id) {
+          safeId(id);
+          writes.push({delete:root()+"/"+collection+"/"+id});
         },
       });
       await request(":commit",{transaction,writes});

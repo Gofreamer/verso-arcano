@@ -292,3 +292,26 @@ blockquote{margin:.8rem 0;padding:.75rem 1rem;border-left:2px solid #7be2ef;back
   .spell-stats div:nth-child(3) { border-inline-start: 0 }
   .spell-stats div:nth-child(n+3) { border-top: 1px solid var(--line) }
 }
+
+.equipment-list { margin: 0 }
+.equipment-list div { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: .4rem; padding: .45rem 0; border-bottom: 1px solid var(--line) }
+.equipment-list div:last-child { border-bottom: 0 }
+.equipment-list dt { color: var(--muted); font-size: .75rem }
+.equipment-list dd { margin: 0; text-align: end; font-size: .75rem; font-weight: 700 }
+.field-identity .panel + .panel { margin-top: .8rem }
+.field-item-art { position: relative }
+.inventory-equipped { position: absolute; right: .4rem; bottom: .4rem; background: #092029; color: #85f2cc; border: 1px solid currentColor; padding: .14rem .35rem; font-size: .66rem; font-weight: 700; text-transform: uppercase }
+.inventory-meta { display: flex; justify-content: space-between; gap: .35rem; color: var(--muted); font-size: .78rem }
+.inventory-rarity { display: block; color: var(--muted); font-size: .73rem; font-weight: 750 }
+.inventory-rarity[data-rarity="Incomum"] { color: #85f2cc }
+.inventory-rarity[data-rarity="Raro"] { color: #8fc9ff }
+.inventory-rarity[data-rarity="Épico"] { color: #c6a2ff }
+.inventory-rarity[data-rarity="Lendário"] { color: #ffd58b }
+.inventory-rarity[data-rarity="Mítico"] { color: #ff99b4 }
+.inventory-checks { display: flex; flex-wrap: wrap; gap: .55rem 1rem }
+.inventory-checks label { display: inline-flex; align-items: center; gap: .4rem }
+.inventory-checks input[type="checkbox"] { width: 1rem; min-height: 0; height: 1rem; accent-color: var(--accent) }
+.catalog-create { margin-bottom: 1rem }
+.catalog-grid { grid-template-columns: repeat(auto-fill,minmax(min(100%,14rem),1fr)) }
+.field-item:target { outline: 2px solid var(--accent) }
+.catalog-dialog { width: min(40rem,calc(100% - 1.5rem)) }

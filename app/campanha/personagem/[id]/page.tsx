@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { Package, Pencil, UserRound } from "lucide-react";
+import { Pencil, UserRound } from "lucide-react";
+import { Equipment, Inventory } from "@/components/inventory";
 import { BasicForm } from "@/components/sheet";
 import { SheetNavigation } from "@/components/sheet-navigation";
 import { Cmd, Empty, Field, Panel, Select, Status, localDate } from "@/components/ui";
@@ -15,7 +16,7 @@ const sections = [
 ];
 
 export default async function Character({ params, searchParams }: {
-  params: Promise<{id:string}>; searchParams: Promise<{aba?:string; editar?:string; busca?:string; categoria?:string}>;
+  params: Promise<{id:string}>; searchParams: Promise<{aba?:string; editar?:string; busca?:string; categoria?:string; raridade?:string; estado?:string}>;
 }) {
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
@@ -46,13 +47,6 @@ export default async function Character({ params, searchParams }: {
   const settings = ["grimorio","progressao"].includes(aba) ? read<{require_bond:boolean;min_verses:number;progression:string}>(await db.from("settings").select("*").single()) : null;
   const character = {character:id};
   const itemName = (itemId: string) => itemRows.find(item => item.id === itemId)?.name ?? "Objeto registrado";
-  const categories = [...new Set(itemRows.map(item => item.category))].sort((a,b) => a.localeCompare(b,"pt-BR"));
-  const category = typeof query.categoria === "string" && categories.includes(query.categoria) ? query.categoria : "";
-  const search = typeof query.busca === "string" ? query.busca.trim().slice(0,120) : "";
-  const normalize = (value: string) => value.normalize("NFD").replace(/\p{Diacritic}/gu,"").toLocaleLowerCase("pt-BR");
-  const visibleItems = itemRows.filter(item => (!category || item.category === category)
-    && normalize([item.name,item.category,item.description].join(" ")).includes(normalize(search)));
-
   return <div className="field-sheet">
     <header className="field-heading">
       <div>
@@ -74,6 +68,7 @@ export default async function Character({ params, searchParams }: {
             <div><dt>Limite mágico</dt><dd>{cap?.name ?? "A definir"}</dd></div>
           </dl>
         </Panel>
+        {aba === "inventario" && <Equipment items={itemOptions}/>}
       </aside>
       <div className="field-content">
         {aba === "visao" && <Panel title="Identidade e história">
@@ -101,28 +96,7 @@ export default async function Character({ params, searchParams }: {
           }) : <Empty>O mestre ainda não definiu as perícias da campanha.</Empty>}
           {master && <Link className="field-edit" href="/campanha/mestre/configuracoes#config-2">Configurar perícias da campanha</Link>}
         </Panel>}
-        {aba === "inventario" && <Panel title="Inventário">
-          <p>{itemRows.length} {itemRows.length === 1 ? "registro" : "registros"}</p>
-          {itemRows.length > 0 && <form className="field-filters" method="get">
-            <input type="hidden" name="aba" value="inventario"/>
-            <label>Buscar objetos<input type="search" name="busca" defaultValue={search} maxLength={120} placeholder="Nome ou descrição"/></label>
-            <Select name="categoria" label="Categoria" value={category} blank="Todas as categorias" options={categories.map(name => ({id:name,name}))}/>
-            <button className="button" type="submit">Filtrar</button>
-            {(search || category) && <Link className="field-edit" href="?aba=inventario">Limpar filtros</Link>}
-          </form>}
-          {!visibleItems.length && <Empty>{itemRows.length ? "Nenhum objeto corresponde aos filtros." : "Nenhum objeto na ficha."}</Empty>}
-          <div className="field-inventory">{visibleItems.map(item => <article className="field-item" key={item.id}>
-            <div className="field-item-art">{item.image_url
-              ? <img src={item.image_url} alt="" loading="lazy" referrerPolicy="no-referrer"/>
-              : <Package size={32} aria-hidden="true"/>}</div>
-            <div className="field-item-body"><span className="eyebrow">{item.category}</span>
-              <h3>{item.name}</h3><span className="badge">× {item.quantity}</span>
-              {item.description && <details><summary>Ver descrição</summary><p className="verbatim">{item.description}</p></details>}
-              {master && <details><summary>Editar objeto</summary><ItemForm character={id} item={item}/></details>}
-            </div>
-          </article>)}</div>
-          {master && <details><summary>Adicionar objeto</summary><ItemForm character={id}/></details>}
-        </Panel>}
+        {aba === "inventario" && <Inventory character={id} items={itemOptions} query={query}/>}
         {aba === "canalizadores" && <Panel title="Canalizadores mágicos">
           {!bonds.length && <Empty>Nenhum vínculo registrado. Um juramento confirmado registra o primeiro canalizador.</Empty>}
           {bonds.map(bond => <div className="record" key={bond.id}>
@@ -150,7 +124,7 @@ export default async function Character({ params, searchParams }: {
             <Cmd name="oath" values={character} submit="Enviar juramento">
               <Field name="formula" label="Texto do juramento" max={6000} area required/>
               <div className="fields"><Field name="ritual_date" label="Data do ritual" type="date" required/>
-                <Select name="item" label="Objeto existente" options={itemOptions} blank="Propor um novo objeto"/></div>
+                <Select name="item" label="Objeto existente" options={itemOptions.filter(item => !item.consumable)} blank="Propor um novo objeto"/></div>
               <div className="fields"><Field name="object" label="Nome do novo objeto"/><Field name="category" label="Categoria do novo objeto"/></div>
             </Cmd>
           </details>}
@@ -175,14 +149,4 @@ export default async function Character({ params, searchParams }: {
     </div>
     <SheetNavigation sections={sections} current={aba}/>
   </div>;
-}
-
-function ItemForm({character,item}: {character:string;item?:{id:string;name:string;category:string;quantity:number;description:string;image_url?:string|null}}) {
-  return <Cmd name="item" values={{character,id:item?.id ?? ""}} submit="Salvar objeto" collapseOnSuccess={Boolean(item)}>
-    <div className="fields"><Field name="name" label="Nome do objeto" value={item?.name} required/>
-      <Field name="category" label="Categoria" value={item?.category} required/>
-      <Field name="image_url" label="Imagem (URL HTTPS)" value={item?.image_url} type="url" max={500}/>
-      <Field name="quantity" label="Quantidade" value={item?.quantity ?? 1} type="number" min={0} required/></div>
-    <Field name="description" label="Descrição" value={item?.description} max={3000} area/>
-  </Cmd>;
 }

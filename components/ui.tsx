@@ -26,19 +26,19 @@ export function Cmd({ name, submit, values = {}, children, collapseOnSuccess }: 
   name: string; submit: string; values?: Record<string,string>; children?: ReactNode; collapseOnSuccess?: boolean;
 }) {
   return <Form action={command.bind(null,name)} submit={submit} inline={!children} collapseOnSuccess={collapseOnSuccess}
-    clear={!values.id && ["submit","grant_spell","oath","tier","item","lore","attribute_def"].includes(name)}>
+    clear={!values.id && ["submit","grant_spell","oath","tier","catalog_create","lore","attribute_def"].includes(name)}>
     {Object.entries(values).map(([key,val]) => <input type="hidden" name={key} value={val} key={key}/>)}
     {children}
   </Form>;
 }
 
-export function Field({ name, label, value, max = 120, min, required, type = "text", area = false }: {
+export function Field({ name, label, value, max = 120, min, step, required, type = "text", area = false }: {
   name: string; label: string; value?: string | number | null; max?: number; min?: number;
-  required?: boolean; type?: string; area?: boolean;
+  required?: boolean; type?: string; area?: boolean; step?: number;
 }) {
   return <label>{label}{area
     ? <textarea name={name} defaultValue={value ?? ""} maxLength={max} required={required} rows={4}/>
-    : <input name={name} type={type} defaultValue={value ?? ""} maxLength={max} min={min} required={required}/>}</label>;
+    : <input name={name} type={type} defaultValue={value ?? ""} maxLength={max} min={min} step={step} required={required}/>}</label>;
 }
 
 export function Select({ name, label, value, options, blank }: {
