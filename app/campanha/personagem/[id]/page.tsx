@@ -97,7 +97,7 @@ export default async function Character({ params, searchParams }: {
           }) : <Empty>O mestre ainda não definiu as perícias da campanha.</Empty>}
           {master && <Link className="field-edit" href="/campanha/mestre/configuracoes#config-2">Configurar perícias da campanha</Link>}
         </Panel>}
-        {aba === "inventario" && <Inventory character={id} items={itemOptions}/>}
+        {aba === "inventario" && <Inventory character={id} items={itemOptions} master={master}/>}
         {aba === "canalizadores" && <Panel title="Canalizadores mágicos">
           {!bonds.length && <Empty>Nenhum vínculo registrado. Um juramento confirmado registra o primeiro canalizador.</Empty>}
           {bonds.map(bond => <div className="record" key={bond.id}>

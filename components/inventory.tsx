@@ -1,6 +1,7 @@
-import { Cmd, Panel } from "@/components/ui";
+import { Cmd, Field, Panel } from "@/components/ui";
 import { equipmentSlots, formatWeight } from "@/lib/inventory";
 import { EquippedItem, InventoryGrid } from "./inventory-grid";
+import { ItemFields } from "./item-fields";
 
 type Item = {
   id:string; name:string; category:string; quantity:number; description:string; image_url?:string|null;
@@ -16,7 +17,7 @@ export function Equipment({items}: {items:Item[]}) {
   </Panel>;
 }
 
-export function Inventory({character, items}: {character:string; items:Item[]}) {
+export function Inventory({character, items, master}: {character:string; items:Item[]; master:boolean}) {
   const weight=items.reduce((sum,item)=>sum+(item.carried===false ? 0 : (item.weight ?? 0)*item.quantity),0);
   return <Panel title={"Inventário // "+items.length+" "+(items.length===1 ? "registro" : "registros")}>
     <p className="inventory-load">{formatWeight(weight)} de carga</p>
@@ -38,6 +39,19 @@ export function Inventory({character, items}: {character:string; items:Item[]}) 
           <p>Uma unidade será removida do inventário.</p>
           <Cmd name="item_consume" values={values} submit="Confirmar consumo"/>
         </details>}
+        {master && <>
+          <details><summary>Editar item</summary>
+            <Cmd name="item_edit" values={values} submit="Salvar alterações">
+              <ItemFields item={item}/>
+              {!equipped ? <Field name="quantity" label="Quantidade" value={item.quantity} type="number" min={1} required/>
+                : <input type="hidden" name="quantity" value="1"/>}
+            </Cmd>
+          </details>
+          <details><summary>Excluir item</summary>
+            <p>Remove esta cópia do inventário do personagem.</p>
+            <Cmd name="item_delete" values={values} submit="Confirmar exclusão"/>
+          </details>
+        </>}
       </div>};
     })}/>
   </Panel>;

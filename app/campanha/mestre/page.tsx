@@ -12,6 +12,8 @@ const actions: Record<string,string> = {
   item:"Inventário atualizado", oath:"Juramento enviado", oath_decide:"Decisão de ritual registrada",
   bond_end:"Destruição registrada", bond_replaced:"Vínculo substituído", submit:"Encantamento enviado", review:"Decisão de magia registrada",
   manual:"Revisão manual aberta", catalog_create:"Item criado no catálogo", catalog_grant:"Item entregue",
+  catalog_edit:"Item do catálogo editado", catalog_delete:"Item do catálogo excluído",
+  item_edit:"Item da ficha editado", item_delete:"Item removido da ficha",
 };
 
 export default async function Master() {

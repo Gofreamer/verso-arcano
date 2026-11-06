@@ -153,4 +153,17 @@ test("campanha: aprovações, isolamento, juramentos, histórico e maestria", as
   await assert.rejects(run("player","item_consume",{character,id:weapons[0].id}),/consumível/);
   await run("player","item_unequip",{character,id:weapons[0].id});
   await run("player","item_equip",{character,id:weapons[1].id,slot:"main"});
+  const edit={character,id:weapons[1].id,name:"Espada da guarda",category:"Arma",rarity:"Raro",weight:"2.5",quantity:"1"};
+  await assert.rejects(run("player","item_edit",edit),/reservada/);
+  await assert.rejects(run("player","item_delete",edit),/reservada/);
+  await run("master","item_edit",edit);
+  assert.equal((await db.get("items",edit.id))?.name,edit.name);
+  assert.equal((await db.get("items",edit.id))?.equipped_slot,"main");
+  await run("master","catalog_edit",{...edit,id:sword.id,name:"Espada do catálogo",equippable:"on",slot_main:"on"});
+  assert.equal((await db.get("item_catalog",sword.id))?.name,"Espada do catálogo");
+  await assert.rejects(run("master","catalog_delete",{id:sword.id}),/cópias/);
+  for(const weapon of weapons) await run("master","item_delete",{character,id:weapon.id});
+  assert.equal(await db.get("items",edit.id),null);
+  await run("master","catalog_delete",{id:sword.id});
+  assert.equal(await db.get("item_catalog",sword.id),null);
 });

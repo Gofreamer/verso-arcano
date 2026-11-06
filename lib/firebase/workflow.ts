@@ -6,7 +6,7 @@ import { transact, type Document, type Writer } from "./firestore";
 
 export class CampaignError extends Error {}
 
-const masterOnly = new Set(["tier","settings","lore","role","attribute_def","progress","attribute","catalog_create","catalog_grant","oath_decide","bond_end","review","manual","grant_spell"]);
+const masterOnly = new Set(["tier","settings","lore","role","attribute_def","progress","attribute","catalog_create","catalog_edit","catalog_delete","catalog_grant","item_edit","item_delete","oath_decide","bond_end","review","manual","grant_spell"]);
 const now = () => new Date().toISOString();
 const uuid = () => crypto.randomUUID();
 function demand(condition:unknown,message:string):asserts condition {
@@ -76,6 +76,15 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
   const audit=(label:string,id:string,details:object)=>db.put("audit",uuid(),{
     actor_id:actor,action:label,target_id:id,details,created_at:timestamp,
   });
+  function itemDetails() {
+    const image_url=text("image_url",2000) || null;
+    demand(!image_url || (image_url.startsWith("https://") && z.url().safeParse(image_url).success),"Informe uma URL HTTPS para a imagem.");
+    const rarity=text("rarity",30,true), rawWeight=text("weight",16,true), weight=Number(rawWeight);
+    demand(rarities.includes(rarity),"Selecione uma raridade válida.");
+    demand(/^\d+(\.\d{1,3})?$/.test(rawWeight) && weight<=100000,"Informe um peso válido em kg.");
+    return {name:text("name",120,true),category:text("category",120,true),rarity,weight,image_url,
+      description:text("description",3000),tags:text("tags",300)};
+  }
 
   switch(action) {
     case "character": {
@@ -142,22 +151,25 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
         state:text("state",100,true),progression:text("progression",8000),updated_at:timestamp});
       break;
     }
-    case "catalog_create": {
-      const image_url=text("image_url",2000) || null;
-      demand(!image_url || (image_url.startsWith("https://") && z.url().safeParse(image_url).success),"Informe uma URL HTTPS para a imagem.");
-      const rarity=text("rarity",30,true), rawWeight=text("weight",16,true), weight=Number(rawWeight);
-      demand(rarities.includes(rarity),"Selecione uma raridade válida.");
-      demand(/^\d+(\.\d{1,3})?$/.test(rawWeight) && weight<=100000,"Informe um peso válido em kg.");
+    case "catalog_create":
+    case "catalog_edit": {
+      const previous=action==="catalog_edit" ? await find("item_catalog",p.id,"Item do catálogo indisponível.") : null;
       const slots=p.equippable==="on" ? equipmentSlots.filter(slot=>p["slot_"+slot.id]==="on").map(slot=>slot.id) : [];
       demand(p.equippable!=="on" || slots.length,"Escolha pelo menos uma posição de equipamento.");
-      const id=uuid();
+      const id=previous?.id ?? uuid();
       db.put("item_catalog",id,{
-        name:text("name",120,true),category:text("category",120,true),rarity,weight,image_url,
-        description:text("description",3000),tags:text("tags",300),slots,
+        ...itemDetails(),slots,
         consumable:p.consumable==="on",stack_limit:p.stackable==="on" ? int("stack_limit",2,100) : 1,
-        created_at:timestamp,
+        created_at:previous?.created_at ?? timestamp,catalog_revision:uuid(),
       });
       result={id};
+      break;
+    }
+    case "catalog_delete": {
+      const entry=await find("item_catalog",p.id,"Item do catálogo indisponível.");
+      const copies=await db.list("items",{field:"catalog_id",value:entry.id});
+      demand(!copies.some(row=>row.quantity>0),"Retire as cópias dos inventários antes de excluir este item do catálogo.");
+      db.delete("item_catalog",entry.id);
       break;
     }
     case "catalog_grant": {
@@ -167,7 +179,8 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       const {id,created_at,...definition}=entry;
       const copies=await scoped("items");
       let remaining=quantity;
-      for(const copy of copies.filter(row=>row.catalog_id===id && row.quantity>0 && row.quantity<entry.stack_limit && !row.equipped_slot)) {
+      for(const copy of copies.filter(row=>row.catalog_id===id && (row.catalog_revision ?? null)===(entry.catalog_revision ?? null)
+        && !row.customized && row.quantity>0 && row.quantity<entry.stack_limit && !row.equipped_slot)) {
         const added=Math.min(remaining,entry.stack_limit-copy.quantity);
         db.put("items",copy.id,{...copy,quantity:copy.quantity+added});
         remaining-=added;
@@ -177,6 +190,24 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
         const amount=Math.min(remaining,entry.stack_limit);
         db.put("items",uuid(),{...attach(ch),...definition,catalog_id:id,quantity:amount,created_at:timestamp});
         remaining-=amount;
+      }
+      break;
+    }
+    case "item_edit":
+    case "item_delete": {
+      await character();
+      const row=await object(target);
+      demand(row.quantity>0,"Item indisponível.");
+      if(action==="item_edit") {
+        const quantity=int("quantity",1,row.equipped_slot ? 1 : row.stack_limit ?? Math.max(100,row.quantity));
+        db.put("items",row.id,{...row,...itemDetails(),quantity,customized:true});
+      } else {
+        const [bonds,oaths,spells]=await Promise.all([scoped("bonds"),scoped("oaths"),scoped("spells")]);
+        demand(!bonds.some(entry=>entry.item_id===row.id && entry.status==="active"),"Encerre o vínculo ativo na aba Canalização antes de excluir.");
+        demand(!oaths.some(entry=>entry.item_id===row.id && entry.status==="pending"),"Resolva o juramento pendente antes de excluir.");
+        const referenced=[...bonds,...oaths,...spells].some(entry=>entry.item_id===row.id);
+        if(referenced) db.put("items",row.id,{...row,quantity:0,equipped_slot:null});
+        else db.delete("items",row.id);
       }
       break;
     }
