@@ -22,10 +22,11 @@ export function Empty({ children }: {children: ReactNode}) {
   return <div className="empty"><BookOpen size={23}/><p>{children}</p></div>;
 }
 
-export function Cmd({ name, submit, values = {}, children }: {
-  name: string; submit: string; values?: Record<string,string>; children?: ReactNode;
+export function Cmd({ name, submit, values = {}, children, collapseOnSuccess }: {
+  name: string; submit: string; values?: Record<string,string>; children?: ReactNode; collapseOnSuccess?: boolean;
 }) {
-  return <Form action={command.bind(null,name)} submit={submit} inline={!children} clear={!values.id && ["spell_save","oath","tier","item","lore","attribute_def"].includes(name)}>
+  return <Form action={command.bind(null,name)} submit={submit} inline={!children} collapseOnSuccess={collapseOnSuccess}
+    clear={!values.id && ["spell_save","oath","tier","item","lore","attribute_def"].includes(name)}>
     {Object.entries(values).map(([key,val]) => <input type="hidden" name={key} value={val} key={key}/>)}
     {children}
   </Form>;

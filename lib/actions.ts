@@ -67,6 +67,6 @@ export async function command(action:string,_:FormState,form:FormData):Promise<F
   }
   revalidatePath("/campanha","layout");
   revalidatePath("/regras");
-  if(action==="character" && !input.id) redirect("/campanha/personagem/"+data.id);
+  if(action==="character") redirect("/campanha/personagem/"+data.id);
   return {ok:true,message};
 }

@@ -14,13 +14,13 @@ export default async function Settings() {
   ]);
   const tiers = read(results[0]);
   const settings = read(results[1]);
-  const attributes = read(results[2]);
+  const skills = read(results[2]);
   const lore = read(results[3]);
   const users = read(results[4]);
   return <>
     <Link className="header-link" href="/campanha/mestre"><ArrowLeft size={15}/> Sala do mestre</Link>
     <Heading label="REGRAS E ACESSO" title="Configurações"/>
-    <nav className="tabs" aria-label="Configurações">{["Tiers","Progressão","Atributos","Conhecimento","Permissões"].map((label,i) =>
+    <nav className="tabs" aria-label="Configurações">{["Tiers","Progressão","Perícias","Conhecimento","Permissões"].map((label,i) =>
       <a key={label} href={"#config-" + i}>{label}</a>)}</nav>
     <Panel id="config-0" title="Tiers e limites mágicos">
       <p>Números de ordem maiores permitem tiers mais altos. Cada ordem é única. Limites narrativos são visíveis aos jogadores.</p>
@@ -35,10 +35,11 @@ export default async function Settings() {
         <Field name="progression" label="Regras públicas de progressão" value={settings.progression} max={8000} area/>
       </Cmd>
     </Panel>
-    <Panel id="config-2" title="Atributos configuráveis">
-      {!attributes.length && <Empty>A campanha começa sem atributos oficiais.</Empty>}
-      {attributes.map(attr => <details key={attr.id}><summary>{attr.name}</summary><AttributeForm attr={attr}/></details>)}
-      <details><summary>Criar atributo</summary><AttributeForm/></details>
+    <Panel id="config-2" title="Perícias da campanha">
+      <p>Defina o que cada perícia cobre, a faixa de valores e o valor inicial. Os jogadores consultam os valores na ficha.</p>
+      {!skills.length && <Empty>Nenhuma perícia cadastrada.</Empty>}
+      {skills.map(skill => <details key={skill.id}><summary>{skill.name}</summary><SkillForm skill={skill}/></details>)}
+      <details><summary>Criar perícia</summary><SkillForm/></details>
     </Panel>
     <Panel id="config-3" title="Conhecimento do mundo">
       <p>Registros privados só ficam disponíveis aos mestres. Marque como público quando chegar o momento de revelar.</p>
@@ -67,13 +68,16 @@ function TierForm({tier}: {tier?:{id:string;name:string;rank:number;limits:strin
   </Cmd>;
 }
 
-function AttributeForm({attr}: {attr?:{id:string;name:string;minimum:number;maximum:number;baseline:number}}) {
-  return <Cmd name="attribute_def" values={{id:attr?.id ?? ""}} submit="Salvar atributo"><div className="fields">
-    <Field name="name" label="Nome" value={attr?.name} max={80} required/>
-    <Field name="minimum" label="Mínimo" value={attr?.minimum} type="number" required/>
-    <Field name="maximum" label="Máximo" value={attr?.maximum} type="number" required/>
-    <Field name="baseline" label="Valor padrão" value={attr?.baseline} type="number" required/>
-  </div></Cmd>;
+function SkillForm({skill}: {skill?:{id:string;name:string;minimum:number;maximum:number;baseline:number;description?:string}}) {
+  return <Cmd name="attribute_def" values={{id:skill?.id ?? ""}} submit="Salvar perícia">
+    <div className="fields">
+      <Field name="name" label="Nome" value={skill?.name} max={80} required/>
+      <Field name="minimum" label="Mínimo" value={skill?.minimum} type="number" required/>
+      <Field name="maximum" label="Máximo" value={skill?.maximum} type="number" required/>
+      <Field name="baseline" label="Valor inicial" value={skill?.baseline} type="number" required/>
+    </div>
+    <Field name="description" label="O que esta perícia cobre" value={skill?.description} max={1000} area/>
+  </Cmd>;
 }
 
 function LoreForm({entry}: {entry?:{id:string;title:string;body:string;published:boolean}}) {

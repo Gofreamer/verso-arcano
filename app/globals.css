@@ -105,3 +105,167 @@ blockquote{margin:.8rem 0;padding:.75rem 1rem;border-left:2px solid #a58554;back
 @media(max-width:780px){.hero{grid-template-columns:1fr}.hero::before{inset:0 0 45% 0}.campaign{display:block}.sidebar{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);gap:.65rem;padding:.85rem 1rem}.sidebar nav{display:flex;flex-wrap:wrap}.sidebar nav a{padding:.35rem .5rem}.identity{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem .8rem}.columns{grid-template-columns:1fr}}
 @media(max-width:480px){.fields{grid-template-columns:1fr}.portrait{width:3.25rem;height:3.25rem}.site-header{padding:.85rem 1rem}.site-header>a:last-child{font-size:.82rem}.hero h1{font-size:clamp(2.9rem,12vw,3.7rem)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+.campaign:has(.field-sheet) {
+  display: block;
+  background: #060e16;
+}
+.campaign:has(.field-sheet) .sidebar {
+  position: static;
+  height: auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .65rem 1.4rem;
+  padding: .65rem clamp(1rem, 4vw, 3.5rem);
+  background: #09141e;
+  border: 0;
+  border-bottom: 1px solid #254354;
+}
+.campaign:has(.field-sheet) .sidebar nav,
+.campaign:has(.field-sheet) .identity {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.campaign:has(.field-sheet) .identity { margin: 0 0 0 auto; gap: .75rem }
+.campaign:has(.field-sheet) .workspace {
+  width: min(100%, 1450px);
+  padding: clamp(1rem, 3vw, 2.6rem) clamp(1rem, 4vw, 3.5rem) 6rem;
+}
+.field-sheet {
+  --panel: #0c1924;
+  --line: #294555;
+  --text: #eef7fc;
+  --muted: #aec2ce;
+  --gold: #7be2ef;
+  --heading: system-ui, sans-serif;
+  color: var(--text);
+  isolation: isolate;
+}
+.field-sheet::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 82% 4%, #11324480, transparent 65%),
+    linear-gradient(#7be2ef0a 1px, transparent 1px),
+    linear-gradient(90deg, #7be2ef0a 1px, transparent 1px);
+  background-size: auto, 40px 40px, 40px 40px;
+}
+.field-sheet :focus-visible { outline-color: var(--gold) }
+.field-sheet a:hover { color: #c7f6fc }
+.field-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: .7rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+.field-heading h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 720; letter-spacing: -.025em }
+.field-heading .eyebrow { margin-top: .85rem }
+.field-heading .quick { margin: 0 0 .55rem }
+.field-columns { display: grid; grid-template-columns: minmax(170px, 230px) minmax(0, 1fr); gap: 1rem }
+.field-identity, .field-content { min-width: 0 }
+.field-sheet .panel {
+  position: relative;
+  border-radius: .2rem;
+  background: linear-gradient(145deg, #10222e, var(--panel) 65%);
+  padding: clamp(.85rem, 2vw, 1.4rem);
+}
+.field-sheet .panel::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 1rem;
+  width: 2rem;
+  border-top: 2px solid var(--gold);
+}
+.field-sheet .panel > h2 {
+  margin: 0 0 1rem;
+  padding-bottom: .8rem;
+  border-bottom: 1px solid var(--line);
+  font-size: .87rem;
+  font-weight: 750;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.field-portrait, .field-item-art {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--gold);
+  background: radial-gradient(ellipse at center, #17394a, #08141d 82%);
+}
+.field-portrait { aspect-ratio: 4 / 5; border: 1px solid var(--line) }
+.field-portrait img, .field-item-art img { width: 100%; height: 100%; object-fit: cover }
+.field-facts { display: grid; gap: .55rem; margin-top: .9rem }
+.field-facts div { display: grid; gap: .1rem }
+.field-facts dt, .field-biography dt { color: var(--muted); font-size: .8rem; font-weight: 650 }
+.field-facts dd, .field-biography dd { margin: 0 }
+.field-biography { margin-top: .85rem; display: grid; gap: 1rem }
+.field-biography > div { border: 1px solid var(--line); padding: .8rem 1rem; background: #081620 }
+.field-biography dt { margin-bottom: .25rem }
+.field-biography dd { white-space: pre-wrap }
+.field-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  min-height: 2.75rem;
+  font-size: .86rem;
+  font-weight: 650;
+}
+.field-sheet .button { background: #86dce8; color: #08212b; border-color: #75becb }
+.field-sheet .button:hover { background: #b0ebf2 }
+.field-sheet input, .field-sheet select, .field-sheet textarea { border-color: #3a596b; background: #08141e }
+.field-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .65rem; margin: .8rem 0 1rem }
+.field-filters label:first-of-type { flex: 1 1 180px }
+.field-filters label { min-width: 0 }
+.field-inventory { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 155px), 1fr)); gap: .65rem }
+.field-item { min-width: 0; border: 1px solid var(--line); background: #0a1722 }
+.field-item-art { aspect-ratio: 4 / 3; border-bottom: 1px solid var(--line) }
+.field-item-body { padding: .65rem }
+.field-item h3 { font-size: 1rem; font-weight: 700 }
+.field-item details { padding: .4rem }
+.field-item .fields { grid-template-columns: 1fr }
+.field-item .button { white-space: normal }
+.field-navigation { position: fixed; right: max(1rem, env(safe-area-inset-right)); bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 10 }
+.field-nav-trigger {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-left: auto;
+  border: 1px solid #86e5ee;
+  border-radius: 50%;
+  background: #112d3c;
+  color: #a7f1fa;
+  box-shadow: 0 .4rem 1.8rem #000b;
+}
+.field-nav-trigger:hover { background: #1a4356 }
+.field-nav-popover {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + .65rem);
+  width: min(16rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 6rem);
+  overflow: auto;
+  border: 1px solid #3b6b7f;
+  border-radius: .35rem;
+  background: #102330;
+  padding: .55rem;
+  box-shadow: 0 .4rem 1.8rem #000b;
+}
+.field-nav-popover p { margin: .25rem .65rem }
+.field-nav-popover a { display: flex; align-items: center; min-height: 2.75rem; padding: .45rem .65rem; color: var(--text) }
+.field-nav-popover a:hover, .field-nav-popover a[aria-current="page"] { background: #1d4050; color: #a7f1fa }
+@media (max-width: 640px) {
+  .field-columns { grid-template-columns: 1fr }
+  .field-identity .panel { display: grid; grid-template-columns: minmax(72px, 100px) 1fr; gap: .7rem; margin-bottom: 0 }
+  .field-identity .panel > h2 { grid-column: 1 / -1; margin: 0 }
+  .field-facts { margin: 0; align-content: start }
+}

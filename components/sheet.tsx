@@ -23,7 +23,7 @@ type Option = {id:string;name:string};
 export function SpellForm({character, items, spell = {}, parent, kind}: {
   character:string; items:Option[]; spell?:Spell; parent?:string; kind?:"revision"|"mastery";
 }) {
-  return <Cmd name="spell_save" values={{character,id:spell.id ?? "",parent:parent ?? "",kind:kind ?? ""}} submit="Salvar rascunho">
+  return <Cmd name="spell_save" values={{character,id:spell.id ?? "",parent:parent ?? "",kind:kind ?? ""}} submit="Salvar rascunho" collapseOnSuccess={Boolean(spell.id)}>
     <div className="fields">
       <Field name="name" label="Nome do encantamento" value={spell.name} required/>
       <Select name="item" label="Canalizador" value={spell.item_id} options={items} blank="Sem objeto específico"/>

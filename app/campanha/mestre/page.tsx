@@ -6,7 +6,7 @@ import { read, session } from "@/lib/auth";
 
 const actions: Record<string,string> = {
   character:"Ficha atualizada", tier:"Tier configurado", settings:"Regras ajustadas", lore:"Arquivo do mundo atualizado",
-  role:"Permissão alterada", attribute_def:"Atributo configurado", progress:"Progressão registrada", attribute:"Atributo atualizado",
+  role:"Permissão alterada", attribute_def:"Perícia configurada", progress:"Progressão registrada", attribute:"Perícia atualizada",
   item:"Inventário atualizado", oath:"Juramento enviado", oath_decide:"Decisão de ritual registrada",
   bond_end:"Destruição registrada", bond_replaced:"Vínculo substituído", submit:"Encantamento enviado", review:"Decisão de magia registrada",
   manual:"Revisão manual aberta",

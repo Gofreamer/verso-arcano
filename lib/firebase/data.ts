@@ -26,9 +26,9 @@ type Result<T> = {data:T|null;error:Error|null;count:number|null};
 type CollectionRows = {
   tiers: typeof initialTier;
   settings: typeof initialSettings;
-  items: {id:string;name:string;category:string;quantity:number;description:string};
+  items: {id:string;name:string;category:string;quantity:number;description:string;image_url?:string|null};
   bonds: {id:string;item_id:string;status:string};
-  attribute_defs: {id:string;name:string;minimum:number;maximum:number;baseline:number};
+  attribute_defs: {id:string;name:string;minimum:number;maximum:number;baseline:number;description?:string};
   lore: {id:string;title:string;body:string;published:boolean};
 };
 type Row<C extends string> = Document & (C extends keyof CollectionRows ? CollectionRows[C] : object);

@@ -123,14 +123,14 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       const name=text("name",80,true);
       const minimum=int("minimum",-2147483648),maximum=int("maximum",minimum),baseline=int("baseline",minimum,maximum);
       const [defs,values]=await Promise.all([db.list("attribute_defs"),db.list("attributes",{field:"definition_id",value:target})]);
-      demand(!defs.some(row=>row.id!==target && row.name===name),"Já existe um atributo com esse nome.");
+      demand(!defs.some(row=>row.id!==target && row.name===name),"Já existe uma perícia com esse nome.");
       demand(values.every(row=>row.value>=minimum && row.value<=maximum),"Ajuste primeiro os valores fora da nova faixa.");
-      db.put("attribute_defs",target,{name,minimum,maximum,baseline});
+      db.put("attribute_defs",target,{name,minimum,maximum,baseline,description:text("description",1000)});
       break;
     }
     case "attribute": {
       const ch=await character();
-      const def=await find("attribute_defs",p.id,"Atributo indisponível.");
+      const def=await find("attribute_defs",p.id,"Perícia indisponível.");
       db.put("attributes",cid+"_"+def.id,{...attach(ch),definition_id:def.id,value:int("value",def.minimum,def.maximum)});
       break;
     }
@@ -144,8 +144,10 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
     case "item": {
       const ch=await character();
       if(p.id) await object(target);
+      const image_url=text("image_url",500) || null;
+      demand(!image_url || (image_url.startsWith("https://") && z.url().safeParse(image_url).success),"Informe uma URL HTTPS para a imagem.");
       db.put("items",target,{...attach(ch),name:text("name",120,true),category:text("category",120,true),
-        quantity:int("quantity"),description:text("description",3000)});
+        quantity:int("quantity"),description:text("description",3000),image_url});
       break;
     }
     case "oath": {

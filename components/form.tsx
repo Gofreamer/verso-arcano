@@ -4,14 +4,15 @@ import { startTransition, useActionState, useRef, type ReactNode } from "react";
 import { LoaderCircle } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 
-export function Form({ action, children, submit, inline = false, clear = false }: {
+export function Form({ action, children, submit, inline = false, clear = false, collapseOnSuccess = false }: {
   action: (state: FormState, data: FormData) => Promise<FormState>;
-  children?: ReactNode; submit: string; inline?: boolean; clear?: boolean;
+  children?: ReactNode; submit: string; inline?: boolean; clear?: boolean; collapseOnSuccess?: boolean;
 }) {
   const form = useRef<HTMLFormElement>(null);
   const [state, dispatch, pending] = useActionState(async (previous: FormState, data: FormData) => {
     const next = await action(previous, data);
     if (next?.ok && clear) form.current?.reset();
+    if (next?.ok && collapseOnSuccess) form.current?.closest("details")?.removeAttribute("open");
     return next;
   }, null);
   return <form method="post" ref={form} className={inline ? "inline-form" : "editor"} onSubmit={event => {
