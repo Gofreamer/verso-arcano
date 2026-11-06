@@ -1,6 +1,7 @@
 import { SpellForm } from "@/components/sheet";
 import { Cmd, Empty, Field, Panel, Select, Status, localDate } from "@/components/ui";
 import { read, session } from "@/lib/auth";
+import { hasAnalysis } from "@/lib/analysis";
 
 type Tier = {id:string;name:string;rank:number;limits:string;max_range:number;max_duration:number;max_cost:number};
 type Item = {id:string;name:string;quantity:number};
@@ -17,6 +18,7 @@ export async function Grimoire({character, tiers, cap, items, bonds, requireBond
   character:string; tiers:Tier[]; cap?:Tier; items:Item[]; bonds:Bond[]; requireBond:boolean; minVerses:number;
 }) {
   const { db, master } = await session();
+  const analysisEnabled = hasAnalysis();
   const spells = read(await db.from("spells").select("*").eq("character_id",character).order("updated_at",{ascending:false}));
   const reviews = spells.length ? read(await db.from("spell_reviews").select("*").in("spell_id",spells.map(s=>s.id)).order("created_at",{ascending:false})) : [];
   const versions = spells.length ? read(await db.from("spell_versions").select("id,spell_id,kind,snapshot,created_at").in("spell_id",spells.map(s=>s.id)).order("created_at",{ascending:false})) : [];
@@ -57,6 +59,7 @@ export async function Grimoire({character, tiers, cap, items, bonds, requireBond
       </div>}
       {["draft","changes"].includes(spell.status) && <>
         <details><summary>Editar rascunho</summary><SpellForm character={character} items={eligibleItems} spell={spell}/></details>
+        {analysisEnabled && <p>Ao enviar, a IA recebe os versos e os dados de jogo necessários à avaliação. O mestre decide a aprovação.</p>}
         <Cmd name="submit" values={{id:spell.id}} submit="Enviar para avaliação"/>
       </>}
       {master && spell.status === "analysis" && <Cmd name="manual" values={{id:spell.id}} submit="Abrir revisão manual"/>}
