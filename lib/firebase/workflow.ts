@@ -201,8 +201,16 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       const previous=p.id ? await currentSpell() : null;
       const ch=await character();
       if(item) await object(item);
+      const image_url=text("image_url",2000);
+      demand(!image_url || (image_url.startsWith("https://") && z.url().safeParse(image_url).success),"Informe uma URL HTTPS para a imagem ou GIF.");
+      const proposal={
+        cost:p.proposed_cost ? int("proposed_cost") : null,
+        duration:p.proposed_duration ? int("proposed_duration") : null,
+        cooldown:text("proposed_cooldown",160),damage:text("proposed_damage",160),
+        effect:text("proposed_effect",4000),limitations:text("proposed_limitations",4000),
+      };
       const data={name:text("name",120,true),formula:text("formula",6000,true,true),intention:text("intention",4000,true),
-        description:text("description",4000),item_id:item,updated_at:timestamp};
+        description:text("description",4000),category:text("category",60),image_url,proposal,item_id:item,updated_at:timestamp};
       if(previous) {
         demand(["draft","changes"].includes(previous.status),"Crie uma revisão para alterar uma fórmula registrada.");
         db.put("spells",target,{...previous,...data});
@@ -280,6 +288,8 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
           limitations:inherited?.limitations ?? text("limitations",4000,true),
           range_m:inherited?.range_m ?? int("range",0,range),duration_turns:inherited?.duration_turns ?? int("duration",0,duration),
           cost:inherited?.cost ?? int("cost",0,cost),
+          cooldown:inherited ? inherited.cooldown ?? "" : text("cooldown",160),
+          damage:inherited ? inherited.damage ?? "" : text("damage",160),
         };
         demand(Number(final.range_m)<=range && Number(final.duration_turns)<=duration && Number(final.cost)<=cost,
           "A fórmula de referência excede os limites atuais.");

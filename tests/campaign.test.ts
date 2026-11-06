@@ -45,28 +45,39 @@ test("campanha: aprovações, isolamento, juramentos, histórico e maestria", as
   assert.deepEqual((await player.from("audit")).data,[]);
 
   const formula="Da brasa guardo o clarão,\nDa noite desfaço o grilhão.";
-  const proposal={character,item:item.id,name:"Brasa",formula,intention:"Iluminar um passo"};
+  const proposal={character,item:item.id,name:"Brasa",formula,intention:"Iluminar um passo",
+    image_url:"https://example.com/brasa.gif",category:"Técnica",proposed_cost:"20",proposed_damage:"2d6"};
+  await assert.rejects(run("player","spell_save",{...proposal,image_url:"javascript:alert(1)"}),/URL HTTPS/);
+  await assert.rejects(run("player","spell_save",{...proposal,proposed_cost:"-1"}),/Valor numérico/);
   const {id:spell}=await run("player","spell_save",{...proposal,status:"approved"});
   const pending=await run("player","submit",{id:spell});
   await assert.rejects(run("player","spell_save",{...proposal,id:spell}),/revisão/);
   await assert.rejects(run("player","review",{id:spell,decision:"approved"}),/reservada/);
   const {id:advanced}=await run("master","tier",{name:"Elevado",rank:"1",limits:"Campanha",max_range:"100",max_duration:"10",max_cost:"20"});
   const approval={id:spell,review_id:pending.review!,decision:"approved",tier:initialTier.id,effect:"Ilumina um passo",
-    limitations:"Escuridão comum",range:"2",duration:"1",cost:"1"};
+    limitations:"Escuridão comum",range:"2",duration:"1",cost:"1",cooldown:"Uma rodada",damage:"1d4"};
   await assert.rejects(run("master","review",{...approval,tier:advanced}),/Tier acima/);
   await assert.rejects(run("master","review",{...approval,range:"999"}),/limites/);
   await run("master","review",approval);
   assert.equal((await player.from("spells").eq("id",spell).single()).data?.status,"approved");
   const approved=(await player.from("spell_versions").eq("kind","approved").single()).data;
   assert.equal(approved?.snapshot.formula,formula);
+  assert.equal(approved?.snapshot.image_url,proposal.image_url);
+  assert.equal(approved?.snapshot.category,proposal.category);
+  assert.equal(approved?.snapshot.proposal.cost,20);
+  assert.equal(approved?.snapshot.approval.cost,1);
+  assert.equal(approved?.snapshot.approval.damage,"1d4");
   assert.equal(approved?.snapshot.approval.effect,approval.effect);
   assert.deepEqual((await stranger.from("spell_versions").eq("spell_id",spell)).data,[]);
 
   const {id:mastery}=await run("player","spell_save",{...proposal,kind:"mastery",parent:spell,formula:"Da brasa, faz-se o clarão."});
   const masteryRequest=await run("player","submit",{id:mastery},true);
   await run("master","manual",{id:mastery});
-  await run("master","review",{...approval,id:mastery,review_id:masteryRequest.review!,range:"999"});
-  assert.equal((await db.get("spell_reviews",masteryRequest.review!))?.range_m,2);
+  await run("master","review",{...approval,id:mastery,review_id:masteryRequest.review!,range:"999",damage:"99d6",cooldown:"Nenhuma"});
+  const masteryApproval=await db.get("spell_reviews",masteryRequest.review!);
+  assert.equal(masteryApproval?.range_m,2);
+  assert.equal(masteryApproval?.damage,"1d4");
+  assert.equal(masteryApproval?.cooldown,"Uma rodada");
 
   const {id:revision}=await run("player","spell_save",{...proposal,kind:"revision",parent:spell});
   const first=await run("player","submit",{id:revision});

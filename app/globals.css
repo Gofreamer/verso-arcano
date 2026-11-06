@@ -254,3 +254,41 @@ blockquote{margin:.8rem 0;padding:.75rem 1rem;border-left:2px solid #7be2ef;back
   .field-identity .panel > h2 { grid-column: 1 / -1; margin: 0 }
   .field-facts { margin: 0; align-content: start }
 }
+
+.spell-index .toolbar h2, .spell-dialog-header h2 { margin: 0 }
+.spell-index .toolbar small { color: var(--muted); font-weight: 400 }
+.spell-filters { display: grid; grid-template-columns: minmax(0,1fr) minmax(9rem,auto); gap: .65rem }
+.spell-group { margin-top: 1.25rem }
+.spell-group h3 { font: inherit; font-weight: 700; margin: 0 0 .65rem }
+.spell-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(min(100%,14rem),1fr)); gap: .65rem }
+.spell-card { display: flex; gap: .75rem; align-items: center; text-align: left; min-height: 6rem; padding: .65rem; color: var(--text); background: #08141d; border: 1px solid var(--line) }
+.spell-card:hover, .spell-card:focus-visible { border-color: #86dce8; background: #102531 }
+.spell-card-info { display: grid; justify-items: start; min-width: 0; gap: .25rem; overflow-wrap: anywhere }
+.spell-card-info .eyebrow { font-size: .66rem }
+.spell-cost { display: inline-flex; align-items: center; gap: .25rem; color: var(--muted); font-size: .8rem }
+.spell-media { display: grid; place-items: center; aspect-ratio: 5 / 4; color: #86dce8; background: #08141d; border: 1px solid var(--line); overflow: hidden }
+.spell-media img { width: 100%; height: 100%; min-height: 0; object-fit: contain }
+.spell-thumbnail { flex: 0 0 4rem; width: 4rem; aspect-ratio: 1 }
+.spell-thumbnail img { object-fit: cover }
+.spell-dialog { position: fixed; inset: 0; margin: auto; width: min(55rem,calc(100% - 1.5rem)); max-height: 92dvh; color: var(--text); background: #0d1b27; border: 1px solid var(--line); overflow: auto; overscroll-behavior: contain }
+.spell-dialog::backdrop { background: rgb(2 8 13 / .82) }
+.spell-dialog-header { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .8rem 1rem; background: #0d1b27; border-bottom: 1px solid var(--line) }
+.spell-dialog-header h2 { font: inherit; font-weight: 750; text-transform: uppercase }
+.spell-dialog-body { padding: 1rem }
+.spell-hero { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.8fr); gap: 1rem; align-items: center; overflow-wrap: anywhere }
+.spell-hero h3 { font: inherit; font-size: clamp(1.5rem,5vw,2.5rem); font-weight: 750; margin: .25rem 0 }
+.spell-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); border: 1px solid var(--line); margin: 1rem 0; background: #08141d }
+.spell-stats div { padding: .65rem; overflow-wrap: anywhere }
+.spell-stats div + div { border-inline-start: 1px solid var(--line) }
+.spell-stats dt, .spell-block h4 { color: #86dce8; text-transform: uppercase; font-size: .75rem }
+.spell-stats dd { margin: .25rem 0 0; font-weight: 700 }
+.spell-block { background: #08141d; border: 1px solid var(--line); margin: .8rem 0; padding: .85rem; overflow-wrap: anywhere }
+.spell-block p:last-child { margin-bottom: 0 }
+.editor fieldset.spell-proposal { border: 1px solid var(--line); padding: .75rem; min-width: 0 }
+@media (max-width: 540px) {
+  .spell-hero, .spell-filters { grid-template-columns: 1fr }
+  .spell-hero .spell-media { max-height: 14rem }
+  .spell-stats { grid-template-columns: repeat(2,minmax(0,1fr)) }
+  .spell-stats div:nth-child(3) { border-inline-start: 0 }
+  .spell-stats div:nth-child(n+3) { border-top: 1px solid var(--line) }
+}
