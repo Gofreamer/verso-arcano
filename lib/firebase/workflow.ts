@@ -1,0 +1,313 @@
+import "server-only";
+import { z } from "zod";
+import { initialSettings, isMaster, tiers } from "./data";
+import { transact, type Document, type Writer } from "./firestore";
+
+export class CampaignError extends Error {}
+
+const masterOnly = new Set(["tier","settings","lore","role","attribute_def","progress","attribute","item","oath_decide","bond_end","review","manual"]);
+const now = () => new Date().toISOString();
+const uuid = () => crypto.randomUUID();
+function demand(condition:unknown,message:string):asserts condition {
+  if(!condition) throw new CampaignError(message);
+}
+
+export async function applyCommand(actor:string,action:string,input:Record<string,string>,ai=false) {
+  return transact(db=>campaignCommand(db,actor,action,input,ai));
+}
+
+export async function campaignCommand(db:Writer,actor:string,action:string,p:Record<string,string>,ai=false) {
+  const profile=await db.get("profiles",actor);
+  demand(profile,"Sessão necessária.");
+  const master=isMaster(actor,profile);
+  demand(master || !masterOnly.has(action),"Ação reservada ao mestre.");
+  const lock=await db.get("settings","workflow_lock");
+  db.put("settings","workflow_lock",{revision:(lock?.revision ?? 0)+1});
+
+  const timestamp=now();
+  const target=p.id || uuid();
+  const item=p.item || null;
+  let cid=p.character;
+  let result: {id:string;character?:string;review?:string}={id:target};
+  let decision:string|undefined;
+
+  function text(key:string,max:number,required=false,preserve=false) {
+    const raw=p[key] ?? "";
+    const value=preserve?raw:raw.trim();
+    demand(value.length<=max && (!required || value.trim().length>0),"Campo inválido ou incompleto.");
+    return value;
+  }
+  function int(key:string,min=0,max=2147483647) {
+    const raw=p[key];
+    const value=Number(raw);
+    demand(raw?.trim() && Number.isInteger(value) && value>=min && value<=max,"Valor numérico fora dos limites permitidos.");
+    return value;
+  }
+  async function find(collection:string,id:string|undefined,message:string) {
+    const row=id ? await db.get(collection,id) : null;
+    demand(row,message);
+    return row;
+  }
+  async function character() {
+    const row=await find("characters",cid,"Personagem indisponível.");
+    demand(master || row.owner_id===actor,"Personagem indisponível.");
+    return row;
+  }
+  async function currentSpell() {
+    const row=await find("spells",p.id,"Encantamento indisponível.");
+    cid=row.character_id;
+    await character();
+    return row;
+  }
+  async function object(id:string|null) {
+    const row=await find("items",id ?? undefined,"Objeto indisponível.");
+    demand(row.character_id===cid,"Objeto indisponível.");
+    return row;
+  }
+  async function tier(id?:string) {
+    const found=(await tiers(db)).find(row=>row.id===id);
+    demand(found,"Tier indisponível.");
+    return found;
+  }
+  const settings=async ()=>await db.get("settings","campaign") ?? initialSettings;
+  const scoped=(name:string)=>db.list(name,{field:"character_id",value:cid});
+  const attach=(ch:Document)=>({character_id:cid,owner_id:ch.owner_id});
+  const audit=(label:string,id:string,details:object)=>db.put("audit",uuid(),{
+    actor_id:actor,action:label,target_id:id,details,created_at:timestamp,
+  });
+
+  switch(action) {
+    case "character": {
+      let avatar:string|null=text("avatar",500)||null;
+      if(avatar) {
+        const parsed=z.url().safeParse(avatar);
+        demand(parsed.success && avatar.startsWith("https://"),"Informe uma URL HTTPS para o retrato.");
+        avatar=parsed.data;
+      }
+      const data={
+        name:text("name",100,true),avatar,age:p.age?int("age"):null,species:text("species",100),
+        origin:text("origin",150),history:text("history",6000),personality:text("personality",3000),
+        appearance:text("appearance",3000),updated_at:timestamp,
+      };
+      cid=target;
+      if(p.id) db.put("characters",target,{...await character(),...data});
+      else db.put("characters",target,{
+        ...data,owner_id:actor,level:1,xp:0,energy:0,state:"Ativo",progression:"",
+        max_tier:(await settings()).starter_tier,created_at:timestamp,
+      });
+      break;
+    }
+    case "tier": {
+      const rank=int("rank");
+      demand(!(await tiers(db)).some(row=>row.id!==target && row.rank===rank),"Já existe um tier com essa ordem.");
+      db.put("tiers",target,{rank,name:text("name",80,true),limits:text("limits",4000,true),
+        max_range:int("max_range"),max_duration:int("max_duration"),max_cost:int("max_cost")});
+      break;
+    }
+    case "settings":
+      await tier(p.starter_tier);
+      db.put("settings","campaign",{starter_tier:p.starter_tier,progression:text("progression",8000),
+        require_bond:p.require_bond==="true",min_verses:int("min_verses",2,20)});
+      break;
+    case "lore":
+      db.put("lore",target,{title:text("title",120,true),body:text("body",10000,true),published:p.published==="true",updated_at:timestamp});
+      break;
+    case "role": {
+      demand(target!==actor && target!==process.env.FIREBASE_INITIAL_MASTER_UID,"Essa função é protegida.");
+      demand(["player","master"].includes(p.role),"Função inválida.");
+      const user=await find("profiles",p.id,"Conta indisponível.");
+      db.put("profiles",target,{...user,role:p.role});
+      break;
+    }
+    case "attribute_def": {
+      const name=text("name",80,true);
+      const minimum=int("minimum",-2147483648),maximum=int("maximum",minimum),baseline=int("baseline",minimum,maximum);
+      const [defs,values]=await Promise.all([db.list("attribute_defs"),db.list("attributes",{field:"definition_id",value:target})]);
+      demand(!defs.some(row=>row.id!==target && row.name===name),"Já existe um atributo com esse nome.");
+      demand(values.every(row=>row.value>=minimum && row.value<=maximum),"Ajuste primeiro os valores fora da nova faixa.");
+      db.put("attribute_defs",target,{name,minimum,maximum,baseline});
+      break;
+    }
+    case "attribute": {
+      const ch=await character();
+      const def=await find("attribute_defs",p.id,"Atributo indisponível.");
+      db.put("attributes",cid+"_"+def.id,{...attach(ch),definition_id:def.id,value:int("value",def.minimum,def.maximum)});
+      break;
+    }
+    case "progress": {
+      const ch=await character();
+      await tier(p.max_tier);
+      db.put("characters",cid,{...ch,max_tier:p.max_tier,level:int("level",1),xp:int("xp"),energy:int("energy"),
+        state:text("state",100,true),progression:text("progression",8000),updated_at:timestamp});
+      break;
+    }
+    case "item": {
+      const ch=await character();
+      if(p.id) await object(target);
+      db.put("items",target,{...attach(ch),name:text("name",120,true),category:text("category",120,true),
+        quantity:int("quantity"),description:text("description",3000)});
+      break;
+    }
+    case "oath": {
+      demand(!p.id,"Crie um novo registro de juramento.");
+      const ch=await character();
+      const date=text("ritual_date",10,true);
+      demand(z.iso.date().safeParse(date).success,"Informe a data do ritual.");
+      const existing=await scoped("oaths");
+      demand(!existing.some(row=>row.status==="pending"),"Já existe um juramento aguardando decisão.");
+      const itemId=item ?? uuid();
+      if(item) {
+        const row=await object(item);
+        demand(row.quantity>0,"Escolha um objeto disponível na ficha.");
+      } else {
+        db.put("items",itemId,{...attach(ch),name:text("object",120,true),category:text("category",120,true),quantity:0,description:""});
+      }
+      db.put("oaths",target,{...attach(ch),item_id:itemId,formula:text("formula",6000,true,true),
+        ritual_date:date,proposed_item:!item,status:"pending",created_at:timestamp});
+      break;
+    }
+    case "oath_decide": {
+      const ch=await character();
+      const oath=await find("oaths",p.id,"Juramento indisponível.");
+      demand(oath.character_id===cid && oath.status==="pending","Juramento fora da fila.");
+      decision=p.decision;
+      demand(["confirmed","declined"].includes(decision),"Decisão inválida.");
+      if(decision==="confirmed") {
+        const [row,bonds]=await Promise.all([object(oath.item_id),scoped("bonds")]);
+        demand(oath.proposed_item || row.quantity>0,"Objeto indisponível.");
+        demand(!bonds.some(b=>b.item_id===row.id && b.status==="destroyed"),"O objeto foi destruído. Registre um novo objeto.");
+        if(oath.proposed_item) db.put("items",row.id,{...row,quantity:Math.max(1,row.quantity)});
+        for(const bond of bonds.filter(b=>b.status==="active")) {
+          db.put("bonds",bond.id,{...bond,status:"replaced",ended_at:timestamp});
+          audit("bond_replaced",bond.id,{character:cid,oath:target});
+        }
+        db.put("bonds",uuid(),{...attach(ch),oath_id:target,item_id:row.id,status:"active",created_at:timestamp});
+      }
+      db.put("oaths",target,{...oath,status:decision});
+      break;
+    }
+    case "bond_end": {
+      await character();
+      const bond=await find("bonds",p.id,"Vínculo indisponível.");
+      demand(bond.character_id===cid && bond.status==="active","Vínculo indisponível.");
+      const row=await object(bond.item_id);
+      db.put("bonds",target,{...bond,status:"destroyed",ended_at:timestamp});
+      db.put("items",row.id,{...row,quantity:0});
+      break;
+    }
+    case "spell_save": {
+      const previous=p.id ? await currentSpell() : null;
+      const ch=await character();
+      if(item) await object(item);
+      const data={name:text("name",120,true),formula:text("formula",6000,true,true),intention:text("intention",4000,true),
+        description:text("description",4000),item_id:item,updated_at:timestamp};
+      if(previous) {
+        demand(["draft","changes"].includes(previous.status),"Crie uma revisão para alterar uma fórmula registrada.");
+        db.put("spells",target,{...previous,...data});
+      } else {
+        const kind=p.kind || "original";
+        let parent_id=null;
+        if(kind!=="original") {
+          demand(["mastery","revision"].includes(kind),"Tipo de fórmula inválido.");
+          const parent=await find("spells",p.parent,"Magia de referência indisponível.");
+          demand(parent.character_id===cid && parent.status==="approved","Escolha uma magia aprovada desta ficha.");
+          parent_id=parent.id;
+        }
+        db.put("spells",target,{...attach(ch),...data,parent_id,kind,status:"draft",feedback:"",created_at:timestamp});
+      }
+      break;
+    }
+    case "submit": {
+      const spell=await currentSpell();
+      demand(["draft","changes"].includes(spell.status),"Rascunho indisponível para envio.");
+      const count=(formula:string)=>formula.split(/\r?\n/).filter(verse=>verse.trim()).length;
+      const total=count(spell.formula);
+      if(spell.kind==="mastery") {
+        const parent=await find("spells",spell.parent_id,"Fórmula de referência indisponível.");
+        demand(total>0 && total<count(parent.formula),"A fórmula de maestria precisa ter menos versos que a referência.");
+      } else {
+        const min=(await settings()).min_verses;
+        demand(total>=min,"A fórmula precisa ter pelo menos "+min+" versos.");
+      }
+      const submission=uuid(),review=uuid();
+      const scope={character_id:cid,owner_id:spell.owner_id,spell_id:target,created_at:timestamp};
+      db.put("spell_versions",submission,{...scope,kind:"submitted",snapshot:spell});
+      db.put("spell_reviews",review,{...scope,submission_id:submission,decision:"pending"});
+      db.put("spells",target,{...spell,status:ai?"analysis":"review",review_id:review,updated_at:timestamp});
+      result={id:target,character:cid,review};
+      break;
+    }
+    case "manual": {
+      const spell=await currentSpell();
+      demand(spell.status==="analysis","A magia não aguarda análise.");
+      db.put("spells",target,{...spell,status:"review",updated_at:timestamp});
+      break;
+    }
+    case "review": {
+      const spell=await currentSpell();
+      demand(spell.status==="review","A magia não aguarda aprovação.");
+      demand(p.review_id===spell.review_id,"A solicitação mudou. Reabra a ficha.");
+      const review=await find("spell_reviews",p.review_id,"Solicitação indisponível.");
+      demand(review.decision==="pending","A solicitação já foi decidida.");
+      decision=p.decision;
+      demand(["approved","changes","rejected"].includes(decision),"Decisão inválida.");
+      const feedback=text("feedback",4000,decision!=="approved",true);
+      let final:Record<string,unknown>={};
+      let tierName:string|undefined;
+      if(decision==="approved") {
+        const ch=await character(), config=await settings();
+        if(config.require_bond || spell.item_id) {
+          const active=(await scoped("bonds")).filter(b=>b.status==="active" && (!spell.item_id || spell.item_id===b.item_id));
+          const objects=await Promise.all(active.map(b=>object(b.item_id)));
+          demand(objects.some(row=>row.quantity>0),"Confirme um vínculo ativo com o canalizador antes da aprovação.");
+        }
+        const cap=await tier(ch.max_tier);
+        let inherited:Document|undefined;
+        if(spell.kind==="mastery") {
+          const parent=await find("spells",spell.parent_id,"Fórmula de referência indisponível.");
+          inherited=await find("spell_reviews",parent.review_id,"Aprovação de referência indisponível.");
+          demand(inherited.decision==="approved","Aprovação de referência indisponível.");
+        }
+        const chosen=await tier(inherited?.tier_id ?? p.tier);
+        demand(chosen.rank<=cap.rank,"Tier acima do limite do personagem.");
+        tierName=chosen.name;
+        const range=Math.min(chosen.max_range,cap.max_range), duration=Math.min(chosen.max_duration,cap.max_duration);
+        const cost=Math.min(chosen.max_cost,cap.max_cost);
+        final={
+          tier_id:chosen.id,effect:inherited?.effect ?? text("effect",4000,true),
+          limitations:inherited?.limitations ?? text("limitations",4000,true),
+          range_m:inherited?.range_m ?? int("range",0,range),duration_turns:inherited?.duration_turns ?? int("duration",0,duration),
+          cost:inherited?.cost ?? int("cost",0,cost),
+        };
+        demand(Number(final.range_m)<=range && Number(final.duration_turns)<=duration && Number(final.cost)<=cost,
+          "A fórmula de referência excede os limites atuais.");
+      }
+      const approved={...review,...final,decision,feedback,decided_at:timestamp};
+      const revised={...spell,status:decision,feedback,updated_at:timestamp};
+      db.put("spell_reviews",review.id,approved);
+      db.put("spells",target,revised);
+      if(decision==="approved") db.put("spell_versions",uuid(),{
+        character_id:cid,owner_id:spell.owner_id,spell_id:target,kind:"approved",
+        snapshot:{...revised,approval:approved,tier_name:tierName},created_at:timestamp,
+      });
+      break;
+    }
+    default: throw new CampaignError("Comando inválido.");
+  }
+  if(masterOnly.has(action) || (master && action==="character") || ["oath","submit"].includes(action)) {
+    audit(action,p.id || (["progress","attribute"].includes(action)?cid:target),{
+      character:cid,decision,notes:action==="oath_decide"?text("notes",4000):undefined,
+    });
+  }
+  return result;
+}
+
+export async function completeAnalysis(spellId:string,reviewId:string,model:string,result:object|null) {
+  return transact(async db=>{
+    const spell=await db.get("spells",spellId);
+    if(spell?.status!=="analysis" || spell.review_id!==reviewId) return false;
+    if(result) db.put("ai_analyses",reviewId,{review_id:reviewId,model,result,created_at:now()});
+    db.put("spells",spellId,{...spell,status:"review",updated_at:now()});
+    return Boolean(result);
+  });
+}
