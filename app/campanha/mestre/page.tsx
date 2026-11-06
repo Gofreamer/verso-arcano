@@ -28,7 +28,7 @@ export default async function Master() {
   const activity = read(audit);
   return <>
     <Heading label="CONTROLE DA CAMPANHA" title="Sala do mestre"><p>Gerencie fichas, arbitre encantamentos e publique os registros do mundo.</p></Heading>
-    <div className="toolbar"><Link className="header-link" href="/campanha"><UsersRound size={17}/> Administrar fichas</Link>
+    <div className="toolbar">
       <Link className="button" href="/campanha/mestre/configuracoes"><Settings2 size={17}/> Configurações</Link></div>
     <div className="cards">
       <div className="panel stat"><UsersRound size={20}/><b>{players.count}</b><span>Jogadores</span></div>

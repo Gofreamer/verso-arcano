@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { ArrowLeft, Package, Pencil, UserRound } from "lucide-react";
+import { Package, Pencil, UserRound } from "lucide-react";
 import { BasicForm } from "@/components/sheet";
 import { SheetNavigation } from "@/components/sheet-navigation";
 import { Cmd, Empty, Field, Panel, Select, Status, localDate } from "@/components/ui";
@@ -55,7 +55,7 @@ export default async function Character({ params, searchParams }: {
 
   return <div className="field-sheet">
     <header className="field-heading">
-      <div><Link className="header-link" href="/campanha"><ArrowLeft size={15}/> Personagens</Link>
+      <div>
         <p className="eyebrow">Arquivo de campanha / {section.label}</p><h1>{sheet.name}</h1>
         <p>{[sheet.species,sheet.origin].filter(Boolean).join(" · ") || "Identidade em construção"}</p>
       </div>
