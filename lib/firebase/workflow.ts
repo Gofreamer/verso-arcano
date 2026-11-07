@@ -171,6 +171,8 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       db.put("characters",cid,{...ch,energy_max,mana_max,energy:int("energy",0,energy_max),
         mana:int("mana",0,mana_max),state:text("state",100,true),combat_notes:text("combat_notes",2000),
         combat_revision:(ch.combat_revision ?? 0)+1,updated_at:timestamp});
+      if(ch.state!==text("state",100,true) || (ch.combat_notes ?? "")!==text("combat_notes",2000))
+        audit("character_state",cid,{character:cid});
       break;
     }
     case "combat_action":
@@ -501,7 +503,7 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
     }
     default: throw new CampaignError("Comando inválido.");
   }
-  if(masterOnly.has(action) || (master && action==="character") || ["oath","submit"].includes(action)) {
+  if((masterOnly.has(action) && action!=="combat_resources") || (master && action==="character") || ["oath","submit"].includes(action)) {
     audit(action,["grant_spell","catalog_create"].includes(action) ? result.id : p.id || (["progress","attribute"].includes(action)?cid:target),{
       character:cid,decision,notes:action==="oath_decide"?text("notes",4000):undefined,
     });

@@ -16,6 +16,7 @@ const actions: Record<string,string> = {
   catalog_edit:"Item do catálogo editado", catalog_delete:"Item do catálogo excluído",
   item_edit:"Item da ficha editado", item_delete:"Item removido da ficha",
   character_capacity:"Limite de carga atualizado",
+  character_state:"Estado do personagem atualizado",
 };
 
 export default async function Master() {
