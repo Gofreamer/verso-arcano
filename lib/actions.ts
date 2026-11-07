@@ -90,6 +90,7 @@ export async function command(action:string,_:FormState,form:FormData):Promise<F
   }
   revalidatePath("/campanha","layout");
   revalidatePath("/regras");
+  if(action==="pantheon_save") revalidatePath("/campanha/panteao","layout");
   if(action==="character") redirect("/campanha/personagem/"+data.id);
   return {ok:true,message};
 }

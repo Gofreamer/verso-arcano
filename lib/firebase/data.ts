@@ -1,6 +1,7 @@
 import "server-only";
 import { firestore, type Document, type Store } from "./firestore";
 import type { CharacterCondition } from "../conditions";
+import { pantheon, type Divinity } from "../pantheon";
 
 export const initialTier = {
   id:"00000000-0000-4000-8000-000000000001", name:"Iniciação (provisório)", rank:0,
@@ -19,12 +20,13 @@ export function isMaster(uid:string, profile?:Document|null) {
   return Boolean(uid && (uid === process.env.FIREBASE_INITIAL_MASTER_UID || profile?.role === "master"));
 }
 
-const playerCollections = new Set(["profiles","tiers","settings","attribute_defs","lore"]);
+const playerCollections = new Set(["profiles","tiers","settings","attribute_defs","lore","pantheon"]);
 const ownedCollections = new Set(["characters","attributes","items","oaths","bonds","spells","spell_versions","spell_reviews","conditions"]);
 type Condition = {field:string; value:string | boolean | string[]};
 type Result<T> = {data:T|null;error:Error|null;count:number|null};
 
 type CollectionRows = {
+  pantheon: Divinity;
   conditions: CharacterCondition;
   tiers: typeof initialTier;
   settings: typeof initialSettings;
@@ -63,6 +65,11 @@ class Query<R extends Document, T = R[]> implements PromiseLike<Result<T>> {
     const viewer=this.viewer;
     if (!viewer && collection !== "lore") return [];
     if (!viewer?.master && !playerCollections.has(collection) && !ownedCollections.has(collection)) return [];
+    if(collection==="pantheon") {
+      const overrides=await this.store.list("pantheon");
+      return pantheon.map(entry=>({...entry,...overrides.find(row=>row.id===entry.id)}))
+        .filter(entry=>viewer?.master || entry.published);
+    }
     if (collection==="profiles" && !viewer?.master) {
       const profile = viewer ? await this.store.get("profiles",viewer.id) : null;
       return profile ? [profile] : [];

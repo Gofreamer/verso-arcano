@@ -2,12 +2,13 @@ import "server-only";
 import { z } from "zod";
 import { equipmentSlots, rarities } from "../inventory";
 import { conditionKinds } from "../conditions";
+import { pantheon } from "../pantheon";
 import { initialSettings, isMaster, tiers } from "./data";
 import { transact, type Document, type Writer } from "./firestore";
 
 export class CampaignError extends Error {}
 
-const masterOnly = new Set(["tier","settings","lore","role","attribute_def","attribute_edit","attribute_remove","progress","combat_resources","character_tier","character_capacity","attribute","catalog_create","catalog_edit","catalog_delete","catalog_grant","item_edit","item_delete","oath_decide","bond_end","review","manual","grant_spell","spell_edit","condition_save","condition_end","condition_delete"]);
+const masterOnly = new Set(["tier","settings","lore","role","attribute_def","attribute_edit","attribute_remove","progress","combat_resources","character_tier","character_capacity","attribute","catalog_create","catalog_edit","catalog_delete","catalog_grant","item_edit","item_delete","oath_decide","bond_end","review","manual","grant_spell","spell_edit","condition_save","condition_end","condition_delete","pantheon_save"]);
 const now = () => new Date().toISOString();
 const uuid = () => crypto.randomUUID();
 function demand(condition:unknown,message:string):asserts condition {
@@ -91,6 +92,15 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
   }
 
   switch(action) {
+    case "pantheon_save": {
+      const original=pantheon.find(entry=>entry.id===p.id);
+      demand(original,"Divindade indisponível.");
+      db.put("pantheon",original.id,{...original,name:text("name",100,true),title:text("title",160,true),
+        domains:text("domains",200,true),summary:text("summary",500,true),personality:text("personality",4000,true),
+        manifestations:text("manifestations",4000,true),teachings:text("teachings",4000,true),taboos:text("taboos",4000,true),
+        myth_title:text("myth_title",160,true),myth:text("myth",10000,true),published:p.published==="on",updated_at:timestamp});
+      break;
+    }
     case "condition_save":
     case "condition_end":
     case "condition_delete": {

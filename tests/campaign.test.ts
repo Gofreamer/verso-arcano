@@ -3,6 +3,7 @@ import test from "node:test";
 import { database, initialTier } from "../lib/firebase/data";
 import type { Document, Writer } from "../lib/firebase/firestore";
 import { campaignCommand } from "../lib/firebase/workflow";
+import { pantheon } from "../lib/pantheon";
 
 test("campanha: aprovações, isolamento, juramentos, histórico e maestria", async () => {
   const tables=new Map<string,Map<string,Document>>();
@@ -240,6 +241,15 @@ test("campanha: aprovações, isolamento, juramentos, histórico e maestria", as
   await assert.rejects(run("player","condition_delete",{character,id:injury.id,revision:"1"}),/reservada/);
   await run("master","condition_delete",{character,id:injury.id,revision:"1"});
   assert.equal(await db.get("conditions",injury.id),null);
+  assert.equal((await player.from("pantheon")).data?.length,7);
+  const god=pantheon[0];
+  const godInput={...god,published:"",color:god.color};
+  await assert.rejects(run("player","pantheon_save",godInput),/reservada/);
+  await run("master","pantheon_save",godInput);
+  assert.equal((await player.from("pantheon").eq("id",god.id)).data?.length,0);
+  assert.equal((await database({id:"master",master:true},db).from("pantheon").eq("id",god.id)).data?.length,1);
+  await run("master","pantheon_save",{...godInput,published:"on"});
+  assert.equal((await player.from("pantheon").eq("id",god.id)).data?.length,1);
   for(let index=0;index<30;index++) db.put("audit","old-"+index,{
     action:"old",created_at:"2020-01-01T00:00:00.000Z",
   });
