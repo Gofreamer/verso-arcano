@@ -360,3 +360,27 @@ blockquote{margin:.8rem 0;padding:.75rem 1rem;border-left:2px solid #7be2ef;back
 .inventory-capacity[data-state="exceeded"] { color: #f59ba8 }
 .capacity-admin { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,16rem),1fr)); gap: .8rem }
 @media (max-width: 700px) { .character-traits { grid-template-columns: 1fr } }
+
+.combat-layout { display: grid; gap: 1rem }
+.combat-resources { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem }
+.combat-resource h2 { display: flex; gap: .6rem; align-items: center; font-size: 1.05rem }
+.combat-resource { --resource-color: #80cedf }
+.combat-energy { --resource-color: #e8c27d }
+.combat-resource h2 svg { color: var(--resource-color) }
+.combat-counter { font-variant-numeric: tabular-nums; margin: .8rem 0 }
+.combat-counter b { font-size: 2.3rem; color: var(--text); line-height: 1 }
+.combat-counter span { color: var(--muted) }
+.combat-resource progress { appearance: none; width: 100%; height: .5rem; border: 0; background: #142d3c }
+.combat-resource progress::-webkit-progress-bar { background: #142d3c }
+.combat-resource progress::-webkit-progress-value { background: var(--resource-color) }
+.combat-resource progress::-moz-progress-bar { background: var(--resource-color) }
+.combat-state { display: flex; gap: .6rem; align-items: center; margin-bottom: .75rem }
+.combat-state svg { color: var(--accent) }
+.combat-abilities { display: grid; grid-template-columns: repeat(auto-fill,minmax(min(100%,17rem),1fr)); gap: .8rem }
+.combat-ability { padding: .9rem; background: #08141d; border: 1px solid var(--line); display: flex; flex-direction: column; gap: .6rem; min-width: 0 }
+.combat-ability-heading { display: flex; align-items: center; gap: .65rem }
+.combat-ability h3 { font-size: 1rem; font-weight: 700; overflow-wrap: anywhere }
+.combat-ability p { margin: 0; font-size: .85rem }
+.combat-ability .inline-form { margin-top: auto }
+.combat-ability .button { white-space: normal }
+@media (max-width: 540px) { .combat-resources { grid-template-columns: 1fr } }

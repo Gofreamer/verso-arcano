@@ -6,7 +6,7 @@ import { transact, type Document, type Writer } from "./firestore";
 
 export class CampaignError extends Error {}
 
-const masterOnly = new Set(["tier","settings","lore","role","attribute_def","attribute_edit","attribute_remove","progress","character_tier","character_capacity","attribute","catalog_create","catalog_edit","catalog_delete","catalog_grant","item_edit","item_delete","oath_decide","bond_end","review","manual","grant_spell","spell_edit"]);
+const masterOnly = new Set(["tier","settings","lore","role","attribute_def","attribute_edit","attribute_remove","progress","combat_resources","character_tier","character_capacity","attribute","catalog_create","catalog_edit","catalog_delete","catalog_grant","item_edit","item_delete","oath_decide","bond_end","review","manual","grant_spell","spell_edit"]);
 const now = () => new Date().toISOString();
 const uuid = () => crypto.randomUUID();
 function demand(condition:unknown,message:string):asserts condition {
@@ -105,7 +105,7 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
         db.put("characters",target,{...previous,...data});
       }
       else db.put("characters",target,{
-        ...data,owner_id:actor,energy:0,state:"Ativo",progression:"",
+        ...data,owner_id:actor,energy:0,mana:0,state:"Ativo",progression:"",
         max_tier:(await settings()).starter_tier,created_at:timestamp,
       });
       break;
@@ -164,6 +164,45 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       }
       break;
     }
+    case "combat_resources": {
+      const ch=await character();
+      demand(int("revision") === (ch.combat_revision ?? 0),"Os recursos mudaram. Confira os valores atuais e tente novamente.");
+      const energy_max=int("energy_max"), mana_max=int("mana_max");
+      db.put("characters",cid,{...ch,energy_max,mana_max,energy:int("energy",0,energy_max),
+        mana:int("mana",0,mana_max),state:text("state",100,true),combat_notes:text("combat_notes",2000),
+        combat_revision:(ch.combat_revision ?? 0)+1,updated_at:timestamp});
+      break;
+    }
+    case "combat_action":
+    case "combat_cast": {
+      let spell:Document|undefined;
+      if(action==="combat_cast") spell=await currentSpell();
+      const ch=await character();
+      demand(int("revision") === (ch.combat_revision ?? 0),"Os recursos mudaram. Confira os valores atuais e tente novamente.");
+      demand(ch.energy>=1,"Energia insuficiente para realizar uma ação.");
+      let manaCost=0;
+      if(spell) {
+        demand(spell.status==="approved" && spell.review_id===p.review_id,"Esta habilidade não está disponível. Reabra a ficha.");
+        const approval=await find("spell_reviews",spell.review_id,"Aprovação indisponível.");
+        demand(approval.decision==="approved","Esta habilidade não está aprovada.");
+        manaCost=approval.cost;
+        demand(Number.isSafeInteger(manaCost) && manaCost>=0 && (ch.mana ?? 0)>=manaCost,"Mana insuficiente para usar esta habilidade.");
+        if(spell.kind!=="grant") {
+          const cap=await tier(ch.max_tier),chosen=await tier(approval.tier_id);
+          demand(chosen.rank<=cap.rank && approval.range_m<=Math.min(cap.max_range,chosen.max_range)
+            && approval.duration_turns<=Math.min(cap.max_duration,chosen.max_duration)
+            && manaCost<=Math.min(cap.max_cost,chosen.max_cost),"A magia excede os limites atuais do personagem.");
+          if((await settings()).require_bond || spell.item_id) {
+            const bonds=(await scoped("bonds")).filter(b=>b.status==="active" && (!spell!.item_id || b.item_id===spell!.item_id));
+            const objects=await Promise.all(bonds.map(b=>object(b.item_id)));
+            demand(objects.some(row=>row.quantity>0),"É necessário um canalizador vinculado disponível.");
+          }
+        }
+      }
+      db.put("characters",cid,{...ch,energy:ch.energy-1,mana:(ch.mana ?? 0)-manaCost,
+        combat_revision:(ch.combat_revision ?? 0)+1,updated_at:timestamp});
+      break;
+    }
     case "character_capacity": {
       const ch=await character(), raw=text("carry_capacity",16,true), capacity=Number(raw);
       demand(/^\d+(\.\d{1,3})?$/.test(raw) && capacity>0 && capacity<=1000000,"Informe um limite maior que zero, em kg.");
@@ -179,8 +218,10 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
     case "progress": {
       const {level,xp,...ch}=await character();
       await tier(p.max_tier);
-      db.put("characters",cid,{...ch,max_tier:p.max_tier,energy:int("energy"),
-        state:text("state",100,true),progression:text("progression",8000),updated_at:timestamp});
+      db.put("characters",cid,{...ch,max_tier:p.max_tier,
+        energy:p.energy!==undefined ? int("energy",0,ch.energy_max ?? 2147483647) : ch.energy,
+        state:p.state!==undefined ? text("state",100,true) : ch.state,
+        combat_revision:(ch.combat_revision ?? 0)+1,progression:text("progression",8000),updated_at:timestamp});
       break;
     }
     case "catalog_create":

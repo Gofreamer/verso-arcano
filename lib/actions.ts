@@ -79,6 +79,9 @@ export async function command(action:string,_:FormState,form:FormData):Promise<F
   if(action==="catalog_create") message="Item criado no catálogo.";
   if(action==="catalog_grant") message="Item entregue ao personagem.";
   if(action==="item_consume") message="Uma unidade foi consumida.";
+  if(action==="combat_resources") message="Recursos e estado atualizados.";
+  if(action==="combat_action") message="Ação registrada. 1 de Energia gasto.";
+  if(action==="combat_cast") message="Habilidade utilizada. Mana e Energia descontadas.";
   if(action==="submit") {
     const completed=useAi && await analyze(db,data.id,data.review!,data.character!).catch(()=>false);
     message=completed?"Análise registrada. Aguardando decisão do mestre."

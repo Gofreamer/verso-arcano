@@ -11,11 +11,13 @@ import { SheetNavigation } from "@/components/sheet-navigation";
 import { Cmd, Empty, Field, Panel, Select, Status, localDate } from "@/components/ui";
 import { read, session } from "@/lib/auth";
 import { Grimoire } from "./grimoire";
+import { Combat } from "@/components/combat";
 
 const sections = [
   {key:"visao",label:"Visão geral"}, {key:"inventario",label:"Inventário"}, {key:"pericias",label:"Perícias"},
   {key:"juramento",label:"Juramento"}, {key:"canalizadores",label:"Canalização"},
   {key:"grimorio",label:"Grimório"}, {key:"progressao",label:"Progressão"},
+  {key:"combate",label:"Combate"},
 ];
 
 export default async function Character({ params, searchParams }: {
@@ -65,7 +67,11 @@ export default async function Character({ params, searchParams }: {
         <p className="eyebrow">Arquivo de campanha / {section.label}</p><h1>{sheet.name}</h1>
         <p>{[sheet.species,sheet.origin].filter(Boolean).join(" · ") || "Identidade em construção"}</p>
       </div>
-      <div className="quick"><span>Energia <b>{sheet.energy}</b></span><Status state={sheet.state}/></div>
+      <div className="quick">
+        <Link href="?aba=combate">Mana <b>{sheet.mana ?? 0}{sheet.mana_max!==undefined && " / "+sheet.mana_max}</b></Link>
+        <Link href="?aba=combate">Energia <b>{sheet.energy}{sheet.energy_max!==undefined && " / "+sheet.energy_max}</b></Link>
+        <Status state={sheet.state}/>
+      </div>
     </header>
     <InventorySelection><div className="field-columns">
       <aside className="field-identity" aria-label="Resumo do personagem">
@@ -88,6 +94,7 @@ export default async function Character({ params, searchParams }: {
         {aba === "inventario" && <Equipment items={itemOptions}/>}
       </aside>
       <div className="field-content">
+        {aba === "combate" && <Combat sheet={sheet}/>}
         {aba === "visao" && <Panel title="Identidade e história">
           {query.editar === "1" ? <>
             <Link className="field-edit" href="?aba=visao">Cancelar edição</Link>
@@ -174,8 +181,6 @@ export default async function Character({ params, searchParams }: {
           {settings.progression && <p className="verbatim">Regras da campanha: {settings.progression}</p>}
           {master && <Cmd name="progress" values={character} submit="Salvar progressão">
             <div className="fields">
-              <Field name="energy" label="Energia" type="number" min={0} value={sheet.energy} required/>
-              <Field name="state" label="Estado" value={sheet.state} max={100} required/>
               <Select name="max_tier" label="Tier máximo" options={tiers} value={sheet.max_tier}/>
             </div>
             <Field name="progression" label="Registro de progressão" value={sheet.progression} max={8000} area/>
