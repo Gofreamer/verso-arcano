@@ -5,6 +5,7 @@ import { RejectionConsequence } from "@/components/rejection-consequence";
 import { read, session } from "@/lib/auth";
 import { hasAnalysis } from "@/lib/analysis";
 import { campaignCharacters } from "@/lib/campaign-characters";
+import { ApprovedSpellForm } from "@/components/master-editors";
 
 type Tier = {id:string;name:string;rank:number;limits:string;max_range:number;max_duration:number;max_cost:number};
 type Item = {id:string;name:string;quantity:number};
@@ -89,6 +90,10 @@ export async function Grimoire({character, tiers, cap, items, bonds, requireBond
       {spell.feedback && <p className="notice verbatim"><b>Retorno do mestre:</b> {spell.feedback}</p>}
       {spell.status === "rejected" && review?.decision === "rejected" && review.consequence &&
         <div className="spell-block"><h4>Consequência da recusa</h4><p className="verbatim">{review.consequence}</p></div>}
+      {master && official && review && <details><summary>Editar habilidade</summary>
+        <ApprovedSpellForm spell={spell as Parameters<typeof ApprovedSpellForm>[0]["spell"]}
+          review={review as Parameters<typeof ApprovedSpellForm>[0]["review"]} tiers={eligibleTiers}/>
+      </details>}
       {official && review && !granted && <div className="approved">
         {!immersive && <p>{tierName} · Alcance de {review.range_m} m</p>}
         {!available && <p className="notice">Indisponível para execução com os limites ou vínculos atuais.</p>}

@@ -6,7 +6,7 @@ import { transact, type Document, type Writer } from "./firestore";
 
 export class CampaignError extends Error {}
 
-const masterOnly = new Set(["tier","settings","lore","role","attribute_def","progress","attribute","catalog_create","catalog_edit","catalog_delete","catalog_grant","item_edit","item_delete","oath_decide","bond_end","review","manual","grant_spell"]);
+const masterOnly = new Set(["tier","settings","lore","role","attribute_def","progress","character_tier","attribute","catalog_create","catalog_edit","catalog_delete","catalog_grant","item_edit","item_delete","oath_decide","bond_end","review","manual","grant_spell","spell_edit"]);
 const now = () => new Date().toISOString();
 const uuid = () => crypto.randomUUID();
 function demand(condition:unknown,message:string):asserts condition {
@@ -145,6 +145,12 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       const ch=await character();
       const def=await find("attribute_defs",p.id,"Perícia indisponível.");
       db.put("attributes",cid+"_"+def.id,{...attach(ch),definition_id:def.id,value:int("value",def.minimum,def.maximum)});
+      break;
+    }
+    case "character_tier": {
+      const {level,xp,...ch}=await character();
+      await tier(p.max_tier);
+      db.put("characters",cid,{...ch,max_tier:p.max_tier,updated_at:timestamp});
       break;
     }
     case "progress": {
@@ -308,6 +314,33 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       });
       result={id,character:cid,review};
       decision="approved";
+      break;
+    }
+    case "spell_edit": {
+      const spell=await currentSpell();
+      demand(spell.status==="approved" && spell.review_id===p.review_id,"A habilidade mudou. Reabra a ficha.");
+      const review=await find("spell_reviews",spell.review_id,"Aprovação indisponível.");
+      demand(review.decision==="approved","A habilidade não está aprovada.");
+      const image_url=text("image_url",2000);
+      demand(!image_url || (image_url.startsWith("https://") && z.url().safeParse(image_url).success),"Informe uma URL HTTPS para a imagem ou GIF.");
+      const name=text("name",120,true), effect=text("effect",4000,true);
+      const final:Document={...review,cost:int("cost"),cooldown:text("cooldown",160),damage:text("damage",160),
+        effect,limitations:text("limitations",4000),updated_at:timestamp};
+      if(spell.kind==="grant") {
+        final.duration_label=text("duration_label",160);
+      } else {
+        const ch=await character(), cap=await tier(ch.max_tier), chosen=await tier(p.tier);
+        demand(chosen.rank<=cap.rank,"Tier acima do limite do personagem.");
+        final.tier_id=chosen.id;
+        final.tier_name=chosen.name;
+        final.range_m=int("range",0,Math.min(chosen.max_range,cap.max_range));
+        final.duration_turns=int("duration",0,Math.min(chosen.max_duration,cap.max_duration));
+        demand(final.cost<=Math.min(chosen.max_cost,cap.max_cost),"Custo acima do limite do personagem.");
+        final.immersive={name,manifestation:text("manifestation",4000),description:text("immersive_description",4000) || effect};
+      }
+      db.put("spells",spell.id,{...spell,name,description:text("description",4000),image_url,category:text("category",60),
+        ...(spell.kind==="grant" && {formula:text("formula",6000,false,true)}),updated_at:timestamp});
+      db.put("spell_reviews",review.id,final);
       break;
     }
     case "submit": {

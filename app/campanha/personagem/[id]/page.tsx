@@ -4,6 +4,7 @@ import { z } from "zod";
 import { Pencil, UserRound } from "lucide-react";
 import { Equipment, Inventory } from "@/components/inventory";
 import { SkillCard } from "@/components/skill-card";
+import { SkillDefinitionForm } from "@/components/master-editors";
 import { InventorySelection } from "@/components/inventory-grid";
 import { BasicForm } from "@/components/sheet";
 import { SheetNavigation } from "@/components/sheet-navigation";
@@ -71,6 +72,11 @@ export default async function Character({ params, searchParams }: {
             {sheet.age != null && <div><dt>Idade</dt><dd>{sheet.age} anos</dd></div>}
             <div><dt>Limite mágico</dt><dd>{cap?.name ?? "A definir"}</dd></div>
           </dl>
+          {master && <details><summary>Editar limite mágico</summary>
+            <Cmd name="character_tier" values={character} submit="Salvar limite mágico" collapseOnSuccess>
+              <Select name="max_tier" label="Tier máximo permitido" options={tiers} value={sheet.max_tier}/>
+            </Cmd>
+          </details>}
         </Panel>
         {aba === "inventario" && <Equipment items={itemOptions}/>}
       </aside>
@@ -99,6 +105,10 @@ export default async function Character({ params, searchParams }: {
                 {master && <details><summary>Editar valor</summary><Cmd name="attribute" values={{...character,id:def.id}} submit="Salvar perícia" collapseOnSuccess>
                   <Field name="value" label="Valor" type="number" value={value} min={def.minimum} required/>
                 </Cmd></details>}
+                {master && <details><summary>Editar perícia</summary>
+                  <p>Nome, descrição e faixa são compartilhados pela campanha.</p>
+                  <SkillDefinitionForm skill={def}/>
+                </details>}
               </SkillCard>;
             })}</div>
           </section>) : <Empty>O mestre ainda não definiu as perícias da campanha.</Empty>}

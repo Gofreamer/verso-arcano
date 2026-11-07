@@ -1,3 +1,4 @@
+import { SkillDefinitionForm as SkillForm } from "@/components/master-editors";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -68,19 +69,6 @@ function TierForm({tier}: {tier?:{id:string;name:string;rank:number;limits:strin
   </Cmd>;
 }
 
-function SkillForm({skill}: {skill?:{id:string;name:string;minimum:number;maximum:number;baseline:number;category?:string;description?:string}}) {
-  return <Cmd name="attribute_def" values={{id:skill?.id ?? ""}} submit="Salvar perícia">
-    <div className="fields">
-      <Field name="name" label="Nome" value={skill?.name} max={80} required/>
-      <Field name="minimum" label="Mínimo" value={skill?.minimum} type="number" required/>
-      <Field name="maximum" label="Máximo" value={skill?.maximum} type="number" required/>
-      <Field name="baseline" label="Valor inicial" value={skill?.baseline} type="number" required/>
-    </div>
-    <Field name="category" label="Categoria (opcional)" value={skill?.category} max={80}/>
-    <Field name="description" label="O que esta perícia cobre" value={skill?.description} max={1000} area/>
-  </Cmd>;
-}
-
 function LoreForm({entry}: {entry?:{id:string;title:string;body:string;published:boolean}}) {
   return <Cmd name="lore" values={{id:entry?.id ?? ""}} submit="Salvar registro">
     <Field name="title" label="Título" value={entry?.title} required/>
@@ -88,3 +76,4 @@ function LoreForm({entry}: {entry?:{id:string;title:string;body:string;published
     <label className="check"><input type="checkbox" name="published" value="true" defaultChecked={entry?.published}/> Publicar nas regras do mundo</label>
   </Cmd>;
 }
+

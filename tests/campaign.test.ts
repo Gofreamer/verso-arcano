@@ -116,6 +116,15 @@ test("campanha: aprovações, isolamento, juramentos, histórico e maestria", as
   assert.equal(grantedReview?.cost,7);
   assert.equal(grantedReview?.duration_label,"Instantânea");
   assert.deepEqual((await stranger.from("spells").eq("id",gifted.id)).data,[]);
+  const skillEdit={id:gifted.id,review_id:gifted.review!,name:"Passo Brumoso",category:"Técnica",
+    cost:"5",duration_label:"Uma rodada",effect:"A névoa esconde seus passos."};
+  await assert.rejects(run("player","spell_edit",skillEdit),/reservada/);
+  await run("master","spell_edit",skillEdit);
+  assert.equal((await db.get("spells",gifted.id))?.name,"Passo Brumoso");
+  assert.equal((await db.get("spell_reviews",gifted.review!))?.cost,5);
+  await assert.rejects(run("player","character_tier",{character,max_tier:advanced}),/reservada/);
+  await run("master","character_tier",{character,max_tier:advanced});
+  assert.equal((await db.get("characters",character))?.max_tier,advanced);
 
   const [bond]=await db.list("bonds");
   await run("master","bond_end",{character,id:bond.id});
