@@ -224,6 +224,22 @@ test("campanha: aprovações, isolamento, juramentos, histórico e maestria", as
   assert.equal(await db.get("items",edit.id),null);
   await run("master","catalog_delete",{id:sword.id});
   assert.equal(await db.get("item_catalog",sword.id),null);
+  const blessing={character,kind:"blessing",name:"Luz protetora",effect:"Um brilho protege a mão ferida.",duration:"Até o amanhecer",source:"Ritual"};
+  await assert.rejects(run("player","condition_save",blessing),/reservada/);
+  const condition=await run("master","condition_save",blessing);
+  assert.equal((await player.from("conditions").eq("id",condition.id).single()).data?.name,blessing.name);
+  assert.deepEqual((await stranger.from("conditions").eq("id",condition.id)).data,[]);
+  await assert.rejects(run("master","condition_save",{...blessing,character:secondCharacter.id,id:condition.id,revision:"1"}),/nesta ficha/);
+  await run("master","condition_save",{...blessing,id:condition.id,revision:"1",effect:"Nova descrição do efeito."});
+  await assert.rejects(run("master","condition_end",{character,id:condition.id,revision:"1"}),/mudou/);
+  await assert.rejects(run("player","condition_end",{character,id:condition.id,revision:"2"}),/reservada/);
+  await run("master","condition_end",{character,id:condition.id,revision:"2"});
+  assert.equal((await db.get("conditions",condition.id))?.status,"ended");
+  assert.equal((await player.from("conditions").eq("character_id",character).eq("status","active")).data?.length,0);
+  const injury=await run("master","condition_save",{...blessing,kind:"injury",name:"Corte na mão"});
+  await assert.rejects(run("player","condition_delete",{character,id:injury.id,revision:"1"}),/reservada/);
+  await run("master","condition_delete",{character,id:injury.id,revision:"1"});
+  assert.equal(await db.get("conditions",injury.id),null);
   for(let index=0;index<30;index++) db.put("audit","old-"+index,{
     action:"old",created_at:"2020-01-01T00:00:00.000Z",
   });
@@ -234,4 +250,5 @@ test("campanha: aprovações, isolamento, juramentos, histórico e maestria", as
   assert.equal((await db.list("audit")).some(entry=>entry.id.startsWith("old-")),false);
   assert.equal((await db.get("oath_notes","legacy-ritual"))?.notes,"Anotação permanente");
   assert.deepEqual((await player.from("oath_notes")).data,[]);
+  assert.equal((await db.get("conditions",condition.id))?.name,blessing.name);
 });

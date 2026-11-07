@@ -12,6 +12,7 @@ import { Cmd, Empty, Field, Panel, Select, Status, localDate } from "@/component
 import { read, session } from "@/lib/auth";
 import { Grimoire } from "./grimoire";
 import { Combat } from "@/components/combat";
+import { Conditions } from "@/components/conditions";
 
 const sections = [
   {key:"visao",label:"Visão geral"}, {key:"inventario",label:"Inventário"}, {key:"pericias",label:"Perícias"},
@@ -97,7 +98,7 @@ export default async function Character({ params, searchParams }: {
       </aside>
       <div className="field-content">
         {aba === "combate" && <Combat sheet={sheet}/>}
-        {aba === "visao" && <Panel title="Identidade e história">
+        {aba === "visao" && <><Panel title="Identidade e história">
           {query.editar === "1" ? <>
             <Link className="field-edit" href="?aba=visao">Cancelar edição</Link>
             <BasicForm sheet={sheet}/>
@@ -115,7 +116,7 @@ export default async function Character({ params, searchParams }: {
                 </section>)}
             </div>
           </>}
-        </Panel>}
+        </Panel><Conditions character={id}/></>}
         {aba === "pericias" && <Panel title="Perícias">
           {defs.length ? skillGroups.map(category => <section className="skill-group" key={category}>
             {(category || skillGroups.length > 1) && <h3>{category || "Sem categoria"}</h3>}

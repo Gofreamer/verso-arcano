@@ -17,6 +17,7 @@ const actions: Record<string,string> = {
   item_edit:"Item da ficha editado", item_delete:"Item removido da ficha",
   character_capacity:"Limite de carga atualizado",
   character_state:"Estado do personagem atualizado",
+  condition_save:"Condição do personagem registrada",condition_end:"Condição encerrada",condition_delete:"Condição excluída",
 };
 
 export default async function Master() {

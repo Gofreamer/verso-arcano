@@ -4,6 +4,7 @@ import { Cmd, Empty, Field, Panel, Status } from "@/components/ui";
 import { SpellMedia } from "@/components/grimoire-index";
 import { read, session } from "@/lib/auth";
 import type { Document } from "@/lib/firebase/firestore";
+import { Conditions } from "./conditions";
 
 export async function Combat({sheet}: {sheet:Document}) {
   const {db,master}=await session();
@@ -42,6 +43,7 @@ export async function Combat({sheet}: {sheet:Document}) {
         </Cmd>
       </details>}
     </Panel>
+    <Conditions character={sheet.id} compact/>
     <Panel title="Habilidades em combate">
       <p>Usar uma habilidade desconta seu custo em Mana e 1 de Energia na mesma ação.</p>
       {!spells.length && <Empty>Nenhuma habilidade aprovada nesta ficha.</Empty>}

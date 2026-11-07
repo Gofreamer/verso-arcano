@@ -1,12 +1,13 @@
 import "server-only";
 import { z } from "zod";
 import { equipmentSlots, rarities } from "../inventory";
+import { conditionKinds } from "../conditions";
 import { initialSettings, isMaster, tiers } from "./data";
 import { transact, type Document, type Writer } from "./firestore";
 
 export class CampaignError extends Error {}
 
-const masterOnly = new Set(["tier","settings","lore","role","attribute_def","attribute_edit","attribute_remove","progress","combat_resources","character_tier","character_capacity","attribute","catalog_create","catalog_edit","catalog_delete","catalog_grant","item_edit","item_delete","oath_decide","bond_end","review","manual","grant_spell","spell_edit"]);
+const masterOnly = new Set(["tier","settings","lore","role","attribute_def","attribute_edit","attribute_remove","progress","combat_resources","character_tier","character_capacity","attribute","catalog_create","catalog_edit","catalog_delete","catalog_grant","item_edit","item_delete","oath_decide","bond_end","review","manual","grant_spell","spell_edit","condition_save","condition_end","condition_delete"]);
 const now = () => new Date().toISOString();
 const uuid = () => crypto.randomUUID();
 function demand(condition:unknown,message:string):asserts condition {
@@ -90,6 +91,31 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
   }
 
   switch(action) {
+    case "condition_save":
+    case "condition_end":
+    case "condition_delete": {
+      const ch=await character();
+      const previous=p.id ? await find("conditions",p.id,"Condição indisponível nesta ficha.") : null;
+      if(previous) {
+        demand(previous.character_id===cid,"Condição indisponível nesta ficha.");
+        demand(int("revision")===previous.revision,"A condição mudou. Reabra a janela antes de editar.");
+      }
+      if(action==="condition_delete") {
+        demand(previous,"Condição indisponível.");
+        db.delete("conditions",previous.id);
+      } else if(action==="condition_end") {
+        demand(previous?.status==="active","Esta condição já foi encerrada.");
+        db.put("conditions",previous.id,{...previous,status:"ended",ended_at:timestamp,
+          revision:previous.revision+1,updated_at:timestamp});
+      } else {
+        demand(conditionKinds.some(kind=>kind.id===p.kind),"Selecione um tipo de condição válido.");
+        db.put("conditions",target,{...previous,...attach(ch),kind:p.kind,name:text("name",100,true),
+          effect:text("effect",1000,true),description:text("description",4000),source:text("source",160),
+          duration:text("duration",160),status:previous?.status ?? "active",revision:(previous?.revision ?? 0)+1,
+          created_at:previous?.created_at ?? timestamp,updated_at:timestamp});
+      }
+      break;
+    }
     case "character": {
       let avatar:string|null=text("avatar",500)||null;
       if(avatar) {

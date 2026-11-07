@@ -384,3 +384,43 @@ blockquote{margin:.8rem 0;padding:.75rem 1rem;border-left:2px solid #7be2ef;back
 .combat-ability .inline-form { margin-top: auto }
 .combat-ability .button { white-space: normal }
 @media (max-width: 540px) { .combat-resources { grid-template-columns: 1fr } }
+
+.conditions-panel { margin-top: 1rem; --condition-color: #e9c77e }
+.conditions-compact { margin-top: 0 }
+.conditions-heading { display: flex; justify-content: space-between; align-items: center; gap: .8rem; flex-wrap: wrap; padding-bottom: .8rem }
+.conditions-heading h2 { margin-bottom: .2rem }
+.conditions-heading p { margin: 0; font-size: .8rem }
+.condition-tabs { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); border: 1px solid var(--line); margin-bottom: 1rem; background: #07131d }
+.condition-tabs button { display: flex; align-items: center; justify-content: center; gap: .5rem; padding: .75rem .4rem; color: var(--muted); background: transparent; border: 0; border-bottom: 2px solid transparent; font-size: .85rem }
+.condition-tabs button + button { border-left: 1px solid var(--line) }
+.condition-tabs b { display: grid; place-items: center; min-width: 1.3rem; height: 1.3rem; padding-inline: .25rem; background: #122532; font-size: .72rem; border-radius: .3rem }
+[data-kind="blessing"] { --condition-color: #e9c77e }
+[data-kind="curse"] { --condition-color: #bc9bf0 }
+[data-kind="injury"] { --condition-color: #f09caa }
+.condition-tabs button[aria-selected="true"] { color: var(--condition-color); border-bottom-color: var(--condition-color); background: #13242d }
+.condition-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(min(100%,15rem),1fr)); gap: .75rem }
+.condition-card { display: flex; flex-direction: column; gap: .75rem; padding: 1rem; min-width: 0; color: var(--text); text-align: left; border: 1px solid var(--line); border-top: 2px solid var(--condition-color); background: #08141d; transition: background .15s,border-color .15s }
+.condition-card:hover,.condition-card:focus-visible { background: #10232e; border-color: var(--condition-color) }
+.condition-card-heading { display: flex; gap: .65rem; align-items: center }
+.condition-emblem { display: grid; place-items: center; flex: 0 0 2.5rem; height: 2.5rem; color: var(--condition-color); border: 1px solid var(--line); border-radius: .5rem; background: #12232e }
+.condition-card-name { display: grid; gap: .2rem; min-width: 0 }
+.condition-card-name small { color: var(--condition-color); font-size: .67rem; text-transform: uppercase; letter-spacing: .1em }
+.condition-card-name strong { font-size: .97rem; line-height: 1.35; overflow-wrap: anywhere }
+.condition-card p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; margin: 0; font-size: .83rem; min-height: 4.8em; white-space: pre-line }
+.condition-card-footer { display: flex; align-items: center; gap: .4rem; margin-top: auto; padding-top: .65rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .74rem; overflow-wrap: anywhere }
+.condition-card[data-ended="true"] { opacity: .65 }
+.condition-empty { padding: 1.8rem 1rem; text-align: center; border: 1px dashed var(--line); color: var(--muted) }
+.condition-empty svg { color: var(--accent); opacity: .65 }
+.condition-empty p { margin-bottom: 0; font-size: .85rem }
+.condition-ended-toggle { display: flex; align-items: center; gap: .5rem; font-size: .8rem; margin-bottom: .8rem; color: var(--muted) }
+.condition-ended-toggle input { width: 1rem; min-height: 0; accent-color: var(--accent) }
+.condition-detail-meta { display: flex; justify-content: space-between; gap: .6rem; color: var(--condition-color); font-size: .8rem }
+.condition-facts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .8rem }
+.condition-facts dt { color: var(--muted); font-size: .76rem }
+.condition-facts dd { margin: .2rem 0 0; overflow-wrap: anywhere }
+.condition-controls { display: grid; gap: .7rem; padding-top: .8rem; border-top: 1px solid var(--line); margin-top: 1rem }
+@media (max-width: 500px) {
+  .condition-tabs button { flex-wrap: wrap; gap: .25rem; font-size: .75rem }
+  .condition-tabs button svg { display: none }
+  .condition-facts { grid-template-columns: 1fr }
+}
