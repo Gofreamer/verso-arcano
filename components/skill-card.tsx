@@ -9,7 +9,7 @@ export function SkillCard({name,category,value,maximum,children}: {
   const dialog=useRef<HTMLDialogElement>(null);
   const title=useId();
   return <div className="skill-entry">
-    <button type="button" className="skill-card" onClick={()=>dialog.current?.showModal()}>
+    <button type="button" className="skill-card" title={name} onClick={()=>dialog.current?.showModal()}>
       <Swords size={20} aria-hidden="true"/>
       <span className="skill-label"><strong>{name}</strong>{category && <small>{category}</small>}</span>
       <span className="skill-value"><b>{value}</b> / {maximum}</span>

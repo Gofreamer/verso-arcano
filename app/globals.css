@@ -332,12 +332,13 @@ blockquote{margin:.8rem 0;padding:.75rem 1rem;border-left:2px solid #7be2ef;back
 
 .skill-group + .skill-group { margin-top: 1.2rem }
 .skill-group h3 { font-size: .9rem; color: var(--muted); margin-bottom: .65rem }
-.skill-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,13rem),1fr)); gap: .7rem; max-width: 60rem }
-.skill-entry { min-width: 0; max-width: 22rem }
-.skill-card { width: 100%; display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: .65rem; align-items: center; padding: .85rem; text-align: start; border: 1px solid var(--line); background: #08141d; color: var(--text); min-height: 4rem }
+.skill-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(min(100%,14rem),1fr)); gap: .7rem; max-width: 60rem }
+.skill-entry { min-width: 0 }
+.skill-card { width: 100%; height: 100%; display: grid; grid-template-columns: 1.25rem minmax(0,1fr) auto; gap: .65rem; align-items: center; padding: .85rem; text-align: start; border: 1px solid var(--line); background: #08141d; color: var(--text); min-height: 5.5rem }
 .skill-card:hover,.skill-card:focus-visible { border-color: var(--accent) }
 .skill-card svg,.skill-value b { color: var(--accent) }
 .skill-label { display: grid; line-height: 1.3 }
+.skill-label strong { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; min-height: 2.6em }
 .skill-label small,.skill-value { color: var(--muted) }
 .skill-value { white-space: nowrap; font-variant-numeric: tabular-nums }
 .skill-config { margin-top: 1rem }
