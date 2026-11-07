@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Cmd, Empty, Field, Heading, Panel, Select } from "@/components/ui";
 import { read, session } from "@/lib/auth";
+import { campaignCharacters } from "@/lib/campaign-characters";
 
 export default async function Settings() {
   const { db, master, id } = await session();
@@ -12,12 +13,14 @@ export default async function Settings() {
     db.from("tiers").select("*").order("rank"), db.from("settings").select("*").single(),
     db.from("attribute_defs").select("*").order("name"), db.from("lore").select("*").order("updated_at",{ascending:false}),
     db.from("profiles").select("id,role").order("created_at"),
+    campaignCharacters(),
   ]);
   const tiers = read(results[0]);
   const settings = read(results[1]);
   const skills = read(results[2]);
   const lore = read(results[3]);
   const users = read(results[4]);
+  const recipients = results[5];
   return <>
     <Link className="header-link" href="/campanha/mestre"><ArrowLeft size={15}/> Sala do mestre</Link>
     <Heading label="REGRAS E ACESSO" title="Configurações"/>
@@ -36,10 +39,17 @@ export default async function Settings() {
         <Field name="progression" label="Regras públicas de progressão" value={settings.progression} max={8000} area/>
       </Cmd>
     </Panel>
-    <Panel id="config-2" title="Perícias da campanha">
-      <p>Defina o que cada perícia cobre, a faixa de valores e o valor inicial. Os jogadores consultam os valores na ficha.</p>
+    <Panel id="config-2" title="Catálogo de perícias">
+      <p>Crie modelos de perícia e atribua cada um ao personagem escolhido. Edite os valores e detalhes individuais na ficha.</p>
       {!skills.length && <Empty>Nenhuma perícia cadastrada.</Empty>}
-      {skills.map(skill => <details key={skill.id}><summary>{skill.name}</summary><SkillForm skill={skill}/></details>)}
+      {skills.map(skill => <details key={skill.id}><summary>{skill.name}</summary><SkillForm skill={skill}/>
+        {recipients.length>0 && <details><summary>Dar perícia</summary>
+          <Cmd name="attribute" values={{id:skill.id}} submit="Dar perícia">
+            <Select name="character" label="Personagem" options={recipients} blank="Selecione"/>
+            <Field name="value" label="Valor inicial nesta ficha (opcional)" type="number"/>
+          </Cmd>
+        </details>}
+      </details>)}
       <details><summary>Criar perícia</summary><SkillForm/></details>
     </Panel>
     <Panel id="config-3" title="Conhecimento do mundo">

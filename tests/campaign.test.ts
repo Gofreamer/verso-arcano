@@ -41,10 +41,25 @@ test("campanha: aprovações, isolamento, juramentos, histórico e maestria", as
   const skill=await run("master","attribute_def",{
     name:"Furtividade",minimum:"0",maximum:"5",baseline:"1",description:"Mover-se sem chamar atenção.",
   });
+  assert.deepEqual((await player.from("attributes").eq("character_id",character)).data,[]);
+  assert.deepEqual((await player.from("attribute_defs")).data,[]);
   await assert.rejects(run("player","attribute",{character,id:skill.id,value:"5"}),/reservada/);
   await run("master","attribute",{character,id:skill.id,value:"3"});
   assert.equal((await player.from("attributes").eq("character_id",character).single()).data?.value,3);
   assert.equal((await player.from("attribute_defs").eq("id",skill.id).single()).data?.description,"Mover-se sem chamar atenção.");
+  const secondCharacter=await run("player","character",{name:"Lia"});
+  assert.deepEqual((await player.from("attributes").eq("character_id",secondCharacter.id)).data,[]);
+  await run("master","attribute",{character:secondCharacter.id,id:skill.id,value:"2"});
+  const assignment=character+"_"+skill.id;
+  const localEdit={character,id:assignment,name:"Passos Silenciosos",minimum:"0",maximum:"10",value:"6",description:"Detalhe de Iara."};
+  await assert.rejects(run("player","attribute_edit",localEdit),/reservada/);
+  await run("master","attribute_edit",localEdit);
+  assert.equal((await db.get("attributes",assignment))?.snapshot.name,"Passos Silenciosos");
+  assert.equal((await db.get("attributes",secondCharacter.id+"_"+skill.id))?.snapshot.name,"Furtividade");
+  assert.equal((await db.get("attributes",secondCharacter.id+"_"+skill.id))?.value,2);
+  await run("master","attribute_remove",{character:secondCharacter.id,id:secondCharacter.id+"_"+skill.id});
+  assert.equal(await db.get("attributes",secondCharacter.id+"_"+skill.id),null);
+  assert.ok(await db.get("attributes",assignment));
   await assert.rejects(run("player","role",{id:"player",role:"master"}),/reservada/);
   const {id:oath}=await run("player","oath",{character,formula:"Juro guardar a chama",ritual_date:"2026-11-06",object:"Lâmina",category:"Espada"});
   const [item]=await db.list("items");

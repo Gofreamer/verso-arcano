@@ -45,8 +45,15 @@ export default async function Character({ params, searchParams }: {
     ? read(await db.from("oaths").select("*").eq("character_id",id).order("created_at",{ascending:false})) : [];
   const oathNotes = aba === "juramento" && master && oathRows.length
     ? read(await db.from("audit").select("target_id,details").eq("action","oath_decide").in("target_id",oathRows.map(oath => oath.id))) : [];
-  const defs = aba === "pericias" ? read(await db.from("attribute_defs").select("*").order("name")) : [];
+  const skillCatalog = aba === "pericias" ? read(await db.from("attribute_defs").select("*").order("name")) : [];
   const skills = aba === "pericias" ? read(await db.from("attributes").select("*").eq("character_id",id)) : [];
+  const defs = skills.flatMap(entry => {
+    const definition=entry.snapshot ?? skillCatalog.find(def=>def.id===entry.definition_id);
+    return definition ? [{id:entry.id,name:String(definition.name),minimum:Number(definition.minimum),
+      maximum:Number(definition.maximum),baseline:Number(entry.value),category:String(definition.category ?? ""),
+      description:String(definition.description ?? "")}] : [];
+  });
+  const unassignedSkills=skillCatalog.filter(def=>!skills.some(entry=>entry.definition_id===def.id));
   const skillGroups = [...new Set(defs.map(def => def.category || ""))]
     .sort((a,b) => a ? (b ? a.localeCompare(b,"pt-BR") : -1) : Number(Boolean(b)));
   const settings = ["grimorio","progressao"].includes(aba) ? read<{require_bond:boolean;min_verses:number;progression:string}>(await db.from("settings").select("*").single()) : null;
@@ -104,21 +111,28 @@ export default async function Character({ params, searchParams }: {
           {defs.length ? skillGroups.map(category => <section className="skill-group" key={category}>
             {(category || skillGroups.length > 1) && <h3>{category || "Sem categoria"}</h3>}
             <div className="skill-grid">{defs.filter(def => (def.category || "") === category).map(def => {
-              const value = skills.find(entry => entry.definition_id === def.id)?.value ?? def.baseline;
+              const value = def.baseline;
               return <SkillCard key={def.id} name={def.name} category={def.category} value={value} maximum={def.maximum}>
                 {def.description && <p className="verbatim">{def.description}</p>}
                 <p>Valor atual <b>{value}</b> · Faixa de {def.minimum} a {def.maximum}</p>
-                {master && <details><summary>Editar valor</summary><Cmd name="attribute" values={{...character,id:def.id}} submit="Salvar perícia" collapseOnSuccess>
-                  <Field name="value" label="Valor" type="number" value={value} min={def.minimum} required/>
-                </Cmd></details>}
                 {master && <details><summary>Editar perícia</summary>
-                  <p>Nome, descrição e faixa são compartilhados pela campanha.</p>
-                  <SkillDefinitionForm skill={def}/>
+                  <SkillDefinitionForm skill={def} character={id} value={value}/>
+                </details>}
+                {master && <details><summary>Retirar desta ficha</summary>
+                  <Cmd name="attribute_remove" values={{...character,id:def.id}} submit="Confirmar retirada"/>
                 </details>}
               </SkillCard>;
             })}</div>
-          </section>) : <Empty>O mestre ainda não definiu as perícias da campanha.</Empty>}
-          {master && <Link className="field-edit skill-config" href="/campanha/mestre/configuracoes#config-2">Configurar perícias da campanha</Link>}
+          </section>) : <Empty>O mestre ainda não atribuiu perícias a esta ficha.</Empty>}
+          {master && <>
+            {unassignedSkills.length>0 && <details className="skill-config"><summary>Dar perícia a esta ficha</summary>
+              <Cmd name="attribute" values={character} submit="Dar perícia">
+                <Select name="id" label="Perícia do catálogo" options={unassignedSkills} blank="Selecione"/>
+                <Field name="value" label="Valor inicial nesta ficha (opcional)" type="number"/>
+              </Cmd>
+            </details>}
+            <Link className="field-edit skill-config" href="/campanha/mestre/configuracoes#config-2">Catálogo de perícias</Link>
+          </>}
         </Panel>}
         {aba === "inventario" && <Inventory character={id} items={itemOptions} master={master} capacity={sheet.carry_capacity}/>}
         {aba === "canalizadores" && <Panel title="Canalizadores mágicos">

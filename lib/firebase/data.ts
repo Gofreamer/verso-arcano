@@ -65,6 +65,12 @@ class Query<R extends Document, T = R[]> implements PromiseLike<Result<T>> {
       const profile = viewer ? await this.store.get("profiles",viewer.id) : null;
       return profile ? [profile] : [];
     }
+    if (collection==="attribute_defs" && !viewer?.master) {
+      const entries=await this.store.list("attributes",{field:"owner_id",value:viewer!.id});
+      const ids=[...new Set(entries.map(entry=>entry.definition_id as string))];
+      const definitions=await Promise.all(ids.map(id=>this.store.get("attribute_defs",id)));
+      return definitions.filter((entry):entry is Document=>Boolean(entry));
+    }
     if (collection==="settings") return [await this.store.get("settings","campaign") ?? initialSettings];
     if (collection==="tiers") return tiers(this.store);
     const condition = collection==="lore" && !viewer?.master ? {field:"published",value:true}

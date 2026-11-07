@@ -1,13 +1,14 @@
 import { Cmd, Field, Select } from "./ui";
 
 type Definition = {id:string;name:string;minimum:number;maximum:number;baseline:number;category?:string;description?:string};
-export function SkillDefinitionForm({skill}: {skill?:Definition}) {
-  return <Cmd name="attribute_def" values={{id:skill?.id ?? ""}} submit="Salvar perícia">
+export function SkillDefinitionForm({skill,character,value}: {skill?:Definition;character?:string;value?:number}) {
+  return <Cmd name={character ? "attribute_edit" : "attribute_def"} values={{id:skill?.id ?? "",...(character && {character})}} submit="Salvar perícia">
     <div className="fields">
       <Field name="name" label="Nome" value={skill?.name} max={80} required/>
       <Field name="minimum" label="Mínimo" value={skill?.minimum} type="number" required/>
       <Field name="maximum" label="Máximo" value={skill?.maximum} type="number" required/>
-      <Field name="baseline" label="Valor inicial" value={skill?.baseline} type="number" required/>
+      {character ? <Field name="value" label="Valor nesta ficha" value={value} type="number" required/>
+        : <Field name="baseline" label="Valor inicial" value={skill?.baseline} type="number" required/>}
     </div>
     <Field name="category" label="Categoria (opcional)" value={skill?.category} max={80}/>
     <Field name="description" label="O que esta perícia cobre" value={skill?.description} max={1000} area/>

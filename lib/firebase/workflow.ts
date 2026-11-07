@@ -6,7 +6,7 @@ import { transact, type Document, type Writer } from "./firestore";
 
 export class CampaignError extends Error {}
 
-const masterOnly = new Set(["tier","settings","lore","role","attribute_def","progress","character_tier","character_capacity","attribute","catalog_create","catalog_edit","catalog_delete","catalog_grant","item_edit","item_delete","oath_decide","bond_end","review","manual","grant_spell","spell_edit"]);
+const masterOnly = new Set(["tier","settings","lore","role","attribute_def","attribute_edit","attribute_remove","progress","character_tier","character_capacity","attribute","catalog_create","catalog_edit","catalog_delete","catalog_grant","item_edit","item_delete","oath_decide","bond_end","review","manual","grant_spell","spell_edit"]);
 const now = () => new Date().toISOString();
 const uuid = () => crypto.randomUUID();
 function demand(condition:unknown,message:string):asserts condition {
@@ -135,16 +135,33 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
     case "attribute_def": {
       const name=text("name",80,true);
       const minimum=int("minimum",-2147483648),maximum=int("maximum",minimum),baseline=int("baseline",minimum,maximum);
-      const [defs,values]=await Promise.all([db.list("attribute_defs"),db.list("attributes",{field:"definition_id",value:target})]);
+      const defs=await db.list("attribute_defs");
       demand(!defs.some(row=>row.id!==target && row.name===name),"Já existe uma perícia com esse nome.");
-      demand(values.every(row=>row.value>=minimum && row.value<=maximum),"Ajuste primeiro os valores fora da nova faixa.");
       db.put("attribute_defs",target,{name,minimum,maximum,baseline,category:text("category",80),description:text("description",1000)});
       break;
     }
     case "attribute": {
       const ch=await character();
       const def=await find("attribute_defs",p.id,"Perícia indisponível.");
-      db.put("attributes",cid+"_"+def.id,{...attach(ch),definition_id:def.id,value:int("value",def.minimum,def.maximum)});
+      const id=cid+"_"+def.id;
+      const existing=await db.get("attributes",id);
+      const snapshot=existing?.snapshot ?? {name:def.name,minimum:def.minimum,maximum:def.maximum,
+        category:def.category ?? "",description:def.description ?? ""};
+      const value=p.value?.trim() ? int("value",snapshot.minimum,snapshot.maximum) : existing?.value ?? def.baseline;
+      db.put("attributes",id,{...attach(ch),definition_id:def.id,snapshot,value});
+      break;
+    }
+    case "attribute_edit":
+    case "attribute_remove": {
+      await character();
+      const entry=await find("attributes",p.id,"Perícia indisponível nesta ficha.");
+      demand(entry.character_id===cid,"Perícia indisponível nesta ficha.");
+      if(action==="attribute_remove") db.delete("attributes",entry.id);
+      else {
+        const minimum=int("minimum",-2147483648), maximum=int("maximum",minimum);
+        db.put("attributes",entry.id,{...entry,value:int("value",minimum,maximum),
+          snapshot:{name:text("name",80,true),minimum,maximum,category:text("category",80),description:text("description",1000)}});
+      }
       break;
     }
     case "character_capacity": {
