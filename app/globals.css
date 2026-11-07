@@ -341,3 +341,21 @@ blockquote{margin:.8rem 0;padding:.75rem 1rem;border-left:2px solid #7be2ef;back
 .skill-label small,.skill-value { color: var(--muted) }
 .skill-value { white-space: nowrap; font-variant-numeric: tabular-nums }
 .skill-config { margin-top: 1rem }
+
+.character-traits { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .8rem; margin-top: 1rem }
+.trait-card { padding: 1rem; border: 1px solid var(--line); border-top: 2px solid #7ba7c1; background: #08141d; min-width: 0 }
+.trait-card h3 { display: flex; align-items: center; gap: .55rem; font-size: 1rem; font-weight: 700 }
+.trait-card h3 svg { color: var(--accent) }
+.trait-phobias { border-top-color: #b69ad2 }
+.trait-strengths { border-top-color: #78c8ad }
+.inventory-capacity { max-width: 35rem; margin: 0 0 1rem auto; color: var(--accent) }
+.capacity-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .3rem .8rem; font-size: .78rem }
+.capacity-heading strong { color: var(--text); font-size: 1rem; font-variant-numeric: tabular-nums }
+.inventory-capacity progress { display: block; width: 100%; height: .5rem; margin: .55rem 0; border: 0; border-radius: 0; appearance: none; background: #0c1924 }
+.inventory-capacity progress::-webkit-progress-bar { background: #142d3c }
+.inventory-capacity progress::-webkit-progress-value { background: currentColor; transition: width .2s }
+.inventory-capacity progress::-moz-progress-bar { background: currentColor }
+.inventory-capacity[data-state="near"] { color: #e8c27d }
+.inventory-capacity[data-state="exceeded"] { color: #f59ba8 }
+.capacity-admin { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,16rem),1fr)); gap: .8rem }
+@media (max-width: 700px) { .character-traits { grid-template-columns: 1fr } }

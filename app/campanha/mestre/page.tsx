@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowUpRight, ScrollText, Settings2, Sparkles, UsersRound } from "lucide-react";
-import { Empty, Heading, Panel, Status, localDate } from "@/components/ui";
+import { Cmd, Empty, Field, Heading, Panel, Status, localDate } from "@/components/ui";
+import { formatWeight } from "@/lib/inventory";
 import { read, session } from "@/lib/auth";
 import { ItemCatalog } from "@/components/item-catalog";
 import { campaignCharacters } from "@/lib/campaign-characters";
@@ -14,12 +15,13 @@ const actions: Record<string,string> = {
   manual:"Revisão manual aberta", catalog_create:"Item criado no catálogo", catalog_grant:"Item entregue",
   catalog_edit:"Item do catálogo editado", catalog_delete:"Item do catálogo excluído",
   item_edit:"Item da ficha editado", item_delete:"Item removido da ficha",
+  character_capacity:"Limite de carga atualizado",
 };
 
 export default async function Master() {
   const { db, master } = await session();
   if (!master) notFound();
-  const [players, characters, magic, rituals, audit, catalog, recipients] = await Promise.all([
+  const [players, characters, magic, rituals, audit, catalog, recipients, capacities] = await Promise.all([
     db.from("profiles").select("id",{count:"exact",head:true}).eq("role","player"),
     db.from("characters").select("id",{count:"exact",head:true}),
     db.from("spells").select("id,name,status,character_id,updated_at,characters(name)",{count:"exact"}).in("status",["analysis","review"]).order("updated_at").limit(50),
@@ -27,6 +29,7 @@ export default async function Master() {
     db.from("audit").select("id,action,created_at").order("created_at",{ascending:false}).limit(12),
     db.from("item_catalog").select("*").order("name"),
     campaignCharacters(),
+    db.from("characters").select("id,name,carry_capacity").order("name"),
   ]);
   if (players.error || characters.error) throw new Error("Falha ao contar registros");
   const spells = read(magic);
@@ -57,6 +60,17 @@ export default async function Master() {
         </div>) : <Empty>Nenhum ritual aguardando confirmação.</Empty>}
       </Panel>
     </div>
+    <Panel title="Limites de carga" id="carga">
+      {read(capacities).length ? <div className="capacity-admin">{read(capacities).map(character=><div className="trait-card" key={character.id}>
+        <h3>{character.name}</h3>
+        <p>{character.carry_capacity>0 ? formatWeight(character.carry_capacity) : "Limite ainda não definido"}</p>
+        <details><summary>Editar limite de peso</summary>
+          <Cmd name="character_capacity" values={{character:character.id}} submit="Salvar limite de peso" collapseOnSuccess>
+            <Field name="carry_capacity" label="Capacidade máxima (kg)" value={character.carry_capacity} type="number" min={0.001} step={0.001} required/>
+          </Cmd>
+        </details>
+      </div>)}</div> : <Empty>Nenhum personagem cadastrado.</Empty>}
+    </Panel>
     <ItemCatalog items={read(catalog)} characters={recipients}/>
     <Panel title="Atividade recente">
       {activity.length ? <ul className="activity">{activity.map(entry => <li key={entry.id}><span>{actions[entry.action] ?? entry.action}</span><time dateTime={entry.created_at}>{localDate(entry.created_at)}</time></li>)}</ul>

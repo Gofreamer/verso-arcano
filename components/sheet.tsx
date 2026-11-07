@@ -1,6 +1,6 @@
 import { Cmd, Field, Select } from "./ui";
 
-type Basic = Partial<{id:string;name:string;avatar:string;age:number;species:string;origin:string;history:string;personality:string;appearance:string}>;
+type Basic = Partial<{id:string;name:string;avatar:string;age:number;species:string;origin:string;history:string;personality:string;fears:string;phobias:string;strengths:string}>;
 export function BasicForm({ sheet = {} }: {sheet?: Basic}) {
   return <Cmd name="character" submit={sheet.id ? "Salvar ficha" : "Criar personagem"} values={sheet.id ? {id:sheet.id} : {}}>
     <div className="fields">
@@ -12,8 +12,12 @@ export function BasicForm({ sheet = {} }: {sheet?: Basic}) {
     </div>
     <Field name="history" label="História" value={sheet.history} max={6000} area/>
     <div className="fields">
-      <Field name="personality" label="Personalidade" value={sheet.personality} max={3000} area/>
-      <Field name="appearance" label="Aparência" value={sheet.appearance} max={3000} area/>
+      <Field name="personality" label="Personalidade (opcional)" value={sheet.personality} max={3000} area/>
+    </div>
+    <div className="character-traits">
+      <Field name="fears" label="Medos" value={sheet.fears} max={2000} area/>
+      <Field name="phobias" label="Fobias" value={sheet.phobias} max={2000} area/>
+      <Field name="strengths" label="Pontos fortes" value={sheet.strengths} max={2000} area/>
     </div>
   </Cmd>;
 }

@@ -25,6 +25,15 @@ test("campanha: aprovações, isolamento, juramentos, histórico e maestria", as
   const {id:character}=await run("player","character",{name:"Iara",level:"99",owner_id:"stranger"});
   assert.equal((await db.get("characters",character))?.level,undefined);
   assert.equal((await db.get("characters",character))?.xp,undefined);
+  await assert.rejects(run("player","character_capacity",{character,carry_capacity:"80"}),/reservada/);
+  await assert.rejects(run("master","character_capacity",{character,carry_capacity:"0"}),/maior que zero/);
+  await run("master","character_capacity",{character,carry_capacity:"75.5"});
+  await run("player","character",{id:character,name:"Iara",fears:"Perder a voz",phobias:"Alturas",
+    strengths:"Persistência",personality:"",carry_capacity:"9999"});
+  assert.equal((await db.get("characters",character))?.carry_capacity,75.5);
+  assert.equal((await db.get("characters",character))?.fears,"Perder a voz");
+  assert.equal((await db.get("characters",character))?.phobias,"Alturas");
+  assert.equal((await db.get("characters",character))?.strengths,"Persistência");
   assert.equal((await stranger.from("characters").eq("id",character).maybeSingle()).data,null);
   await assert.rejects(run("stranger","character",{id:character,name:"Falso"}),/indisponível/);
   await assert.rejects(run("player","progress",{character,level:"99"}),/reservada/);

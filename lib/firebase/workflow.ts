@@ -6,7 +6,7 @@ import { transact, type Document, type Writer } from "./firestore";
 
 export class CampaignError extends Error {}
 
-const masterOnly = new Set(["tier","settings","lore","role","attribute_def","progress","character_tier","attribute","catalog_create","catalog_edit","catalog_delete","catalog_grant","item_edit","item_delete","oath_decide","bond_end","review","manual","grant_spell","spell_edit"]);
+const masterOnly = new Set(["tier","settings","lore","role","attribute_def","progress","character_tier","character_capacity","attribute","catalog_create","catalog_edit","catalog_delete","catalog_grant","item_edit","item_delete","oath_decide","bond_end","review","manual","grant_spell","spell_edit"]);
 const now = () => new Date().toISOString();
 const uuid = () => crypto.randomUUID();
 function demand(condition:unknown,message:string):asserts condition {
@@ -97,11 +97,11 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       const data={
         name:text("name",100,true),avatar,age:p.age?int("age"):null,species:text("species",100),
         origin:text("origin",150),history:text("history",6000),personality:text("personality",3000),
-        appearance:text("appearance",3000),updated_at:timestamp,
+        fears:text("fears",2000),phobias:text("phobias",2000),strengths:text("strengths",2000),updated_at:timestamp,
       };
       cid=target;
       if(p.id) {
-        const {level,xp,...previous}=await character();
+        const {level,xp,appearance,...previous}=await character();
         db.put("characters",target,{...previous,...data});
       }
       else db.put("characters",target,{
@@ -145,6 +145,12 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       const ch=await character();
       const def=await find("attribute_defs",p.id,"Perícia indisponível.");
       db.put("attributes",cid+"_"+def.id,{...attach(ch),definition_id:def.id,value:int("value",def.minimum,def.maximum)});
+      break;
+    }
+    case "character_capacity": {
+      const ch=await character(), raw=text("carry_capacity",16,true), capacity=Number(raw);
+      demand(/^\d+(\.\d{1,3})?$/.test(raw) && capacity>0 && capacity<=1000000,"Informe um limite maior que zero, em kg.");
+      db.put("characters",cid,{...ch,carry_capacity:capacity,updated_at:timestamp});
       break;
     }
     case "character_tier": {

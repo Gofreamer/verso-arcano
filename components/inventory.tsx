@@ -17,10 +17,20 @@ export function Equipment({items}: {items:Item[]}) {
   </Panel>;
 }
 
-export function Inventory({character, items, master}: {character:string; items:Item[]; master:boolean}) {
+export function Inventory({character, items, master, capacity}: {character:string; items:Item[]; master:boolean; capacity?:number}) {
   const weight=items.reduce((sum,item)=>sum+(item.carried===false ? 0 : (item.weight ?? 0)*item.quantity),0);
+  const configured=typeof capacity==="number" && Number.isFinite(capacity) && capacity>0;
+  const percentage=configured ? weight/capacity*100 : 0;
+  const loadState=percentage>100 ? "exceeded" : percentage>=80 ? "near" : "normal";
   return <Panel title={"Inventário // "+items.length+" "+(items.length===1 ? "registro" : "registros")}>
-    <p className="inventory-load">{formatWeight(weight)} de carga</p>
+    <div className="inventory-capacity" data-state={loadState}>
+      <div className="capacity-heading"><span>Carga transportada</span><strong>{formatWeight(weight)}{configured && <> / {formatWeight(capacity)}</>}</strong></div>
+      {configured ? <>
+        <progress value={Math.min(weight,capacity)} max={capacity} aria-label="Peso transportado em relação ao limite"/>
+        <div className="capacity-heading"><span>{loadState==="exceeded" ? "Limite excedido" : loadState==="near" ? "Próximo do limite" : "Dentro do limite"}</span>
+          <span>{Math.round(percentage)}% · {loadState==="exceeded" ? formatWeight(weight-capacity)+" acima" : formatWeight(capacity-weight)+" disponíveis"}</span></div>
+      </> : <p>O mestre ainda não definiu o limite de carga.</p>}
+    </div>
     <InventoryGrid items={items.map(item=>{
       const slots=equipmentSlots.filter(slot=>item.slots?.includes(slot.id) && !items.some(copy=>copy.equipped_slot===slot.id));
       const equipped=equipmentSlots.find(slot=>slot.id===item.equipped_slot);

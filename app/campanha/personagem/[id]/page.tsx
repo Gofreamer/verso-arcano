@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { Pencil, UserRound } from "lucide-react";
+import { Pencil, UserRound, Shield, Ghost, Eye } from "lucide-react";
 import { Equipment, Inventory } from "@/components/inventory";
 import { SkillCard } from "@/components/skill-card";
 import { SkillDefinitionForm } from "@/components/master-editors";
@@ -89,9 +89,15 @@ export default async function Character({ params, searchParams }: {
             <Link className="field-edit" href="?aba=visao&editar=1"><Pencil size={15} aria-hidden="true"/> Editar ficha</Link>
             <dl className="field-biography">
               <div><dt>História</dt><dd>{sheet.history || "História ainda não registrada."}</dd></div>
-              <div><dt>Personalidade</dt><dd>{sheet.personality || "Personalidade ainda não registrada."}</dd></div>
-              <div><dt>Aparência</dt><dd>{sheet.appearance || "Aparência ainda não registrada."}</dd></div>
+              {sheet.personality?.trim() && <div><dt>Personalidade</dt><dd>{sheet.personality}</dd></div>}
             </dl>
+            <div className="character-traits">
+              {[{key:"fears",label:"Medos",Icon:Eye},{key:"phobias",label:"Fobias",Icon:Ghost},{key:"strengths",label:"Pontos fortes",Icon:Shield}]
+                .map(({key,label,Icon})=><section className={"trait-card trait-"+key} key={key}>
+                  <h3><Icon size={18} aria-hidden="true"/>{label}</h3>
+                  <p className="verbatim">{sheet[key]?.trim() || "Ainda não registrado."}</p>
+                </section>)}
+            </div>
           </>}
         </Panel>}
         {aba === "pericias" && <Panel title="Perícias">
@@ -114,7 +120,7 @@ export default async function Character({ params, searchParams }: {
           </section>) : <Empty>O mestre ainda não definiu as perícias da campanha.</Empty>}
           {master && <Link className="field-edit skill-config" href="/campanha/mestre/configuracoes#config-2">Configurar perícias da campanha</Link>}
         </Panel>}
-        {aba === "inventario" && <Inventory character={id} items={itemOptions} master={master}/>}
+        {aba === "inventario" && <Inventory character={id} items={itemOptions} master={master} capacity={sheet.carry_capacity}/>}
         {aba === "canalizadores" && <Panel title="Canalizadores mágicos">
           {!bonds.length && <Empty>Nenhum vínculo registrado. Um juramento confirmado registra o primeiro canalizador.</Empty>}
           {bonds.map(bond => <div className="record" key={bond.id}>
