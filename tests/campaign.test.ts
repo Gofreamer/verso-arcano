@@ -224,4 +224,10 @@ test("campanha: aprovações, isolamento, juramentos, histórico e maestria", as
   assert.equal(await db.get("items",edit.id),null);
   await run("master","catalog_delete",{id:sword.id});
   assert.equal(await db.get("item_catalog",sword.id),null);
+  for(let index=0;index<30;index++) db.put("audit","old-"+index,{
+    action:"old",created_at:"2020-01-01T00:00:00.000Z",
+  });
+  await run("master","character_tier",{character,max_tier:initialTier.id});
+  assert.equal((await db.list("audit")).length,25);
+  assert.equal((await db.list("audit")).some(entry=>entry.id.startsWith("old-")),false);
 });

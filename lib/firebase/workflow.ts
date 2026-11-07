@@ -73,9 +73,12 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
   const settings=async ()=>await db.get("settings","campaign") ?? initialSettings;
   const scoped=(name:string)=>db.list(name,{field:"character_id",value:cid});
   const attach=(ch:Document)=>({character_id:cid,owner_id:ch.owner_id});
-  const audit=(label:string,id:string,details:object)=>db.put("audit",uuid(),{
-    actor_id:actor,action:label,target_id:id,details,created_at:timestamp,
-  });
+  const pendingAudit:Document[]=[];
+  const audit=(label:string,id:string,details:object)=>{
+    const entry={id:uuid(),actor_id:actor,action:label,target_id:id,details,created_at:timestamp};
+    pendingAudit.push(entry);
+    db.put("audit",entry.id,entry);
+  };
   function itemDetails() {
     const image_url=text("image_url",2000) || null;
     demand(!image_url || (image_url.startsWith("https://") && z.url().safeParse(image_url).success),"Informe uma URL HTTPS para a imagem.");
@@ -507,6 +510,13 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
     audit(action,["grant_spell","catalog_create"].includes(action) ? result.id : p.id || (["progress","attribute"].includes(action)?cid:target),{
       character:cid,decision,notes:action==="oath_decide"?text("notes",4000):undefined,
     });
+  }
+  if(pendingAudit.length) {
+    const existing=await db.list("audit");
+    const pendingIds=new Set(pendingAudit.map(entry=>entry.id));
+    const records=[...pendingAudit,...existing.filter(entry=>!pendingIds.has(entry.id))]
+      .sort((a,b)=>b.created_at.localeCompare(a.created_at));
+    for(const entry of records.slice(25)) db.delete("audit",entry.id);
   }
   return result;
 }

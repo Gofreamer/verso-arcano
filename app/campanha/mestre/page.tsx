@@ -74,6 +74,7 @@ export default async function Master() {
     </Panel>
     <ItemCatalog items={read(catalog)} characters={recipients}/>
     <Panel title="Atividade recente">
+      <p>O log mantém as 25 atividades mais recentes.</p>
       {activity.length ? <ul className="activity">{activity.map(entry => <li key={entry.id}><span>{actions[entry.action] ?? entry.action}</span><time dateTime={entry.created_at}>{localDate(entry.created_at)}</time></li>)}</ul>
         : <Empty>O histórico aparece à medida que a campanha progride.</Empty>}
     </Panel>
