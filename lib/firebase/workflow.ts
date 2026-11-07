@@ -347,6 +347,7 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
         db.put("bonds",uuid(),{...attach(ch),oath_id:target,item_id:row.id,status:"active",created_at:timestamp});
       }
       db.put("oaths",target,{...oath,status:decision});
+      db.put("oath_notes",target,{notes:text("notes",4000),updated_at:timestamp});
       break;
     }
     case "bond_end": {
@@ -516,7 +517,16 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
     const pendingIds=new Set(pendingAudit.map(entry=>entry.id));
     const records=[...pendingAudit,...existing.filter(entry=>!pendingIds.has(entry.id))]
       .sort((a,b)=>b.created_at.localeCompare(a.created_at));
-    for(const entry of records.slice(25)) db.delete("audit",entry.id);
+    const removed=records.slice(25);
+    const ritualIds=[...new Set(removed.filter(entry=>entry.action==="oath_decide" && entry.details?.notes)
+      .map(entry=>entry.target_id as string))];
+    for(const ritual of ritualIds) {
+      if(!await db.get("oath_notes",ritual)) {
+        const latest=records.find(entry=>entry.action==="oath_decide" && entry.target_id===ritual && entry.details?.notes);
+        if(latest) db.put("oath_notes",ritual,{notes:latest.details.notes,updated_at:latest.created_at});
+      }
+    }
+    for(const entry of removed) db.delete("audit",entry.id);
   }
   return result;
 }

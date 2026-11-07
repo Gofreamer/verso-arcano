@@ -47,6 +47,8 @@ export default async function Character({ params, searchParams }: {
     ? read(await db.from("oaths").select("*").eq("character_id",id).order("created_at",{ascending:false})) : [];
   const oathNotes = aba === "juramento" && master && oathRows.length
     ? read(await db.from("audit").select("target_id,details").eq("action","oath_decide").in("target_id",oathRows.map(oath => oath.id))) : [];
+  const ritualNotes = aba === "juramento" && master && oathRows.length
+    ? read(await db.from("oath_notes").select("*").in("id",oathRows.map(oath=>oath.id))) : [];
   const skillCatalog = aba === "pericias" ? read(await db.from("attribute_defs").select("*").order("name")) : [];
   const skills = aba === "pericias" ? read(await db.from("attributes").select("*").eq("character_id",id)) : [];
   const defs = skills.flatMap(entry => {
@@ -158,7 +160,8 @@ export default async function Character({ params, searchParams }: {
           {oathRows.map(oath => <div className="record" key={oath.id}>
             <h3>{itemName(oath.item_id)} <Status state={oath.status}/></h3><p>{localDate(oath.ritual_date)}</p>
             <blockquote>{oath.formula}</blockquote>
-            {master && oathNotes.find(note => note.target_id === oath.id)?.details?.notes && <p className="verbatim">Nota privada: {oathNotes.find(note => note.target_id === oath.id)?.details.notes}</p>}
+            {master && (ritualNotes.find(note=>note.id===oath.id)?.notes || oathNotes.find(note => note.target_id === oath.id)?.details?.notes) &&
+              <p className="verbatim">Nota privada: {ritualNotes.find(note=>note.id===oath.id)?.notes ?? oathNotes.find(note => note.target_id === oath.id)?.details.notes}</p>}
             {master && oath.status === "pending" && <Cmd name="oath_decide" values={{...character,id:oath.id}} submit="Registrar decisão do ritual">
               <Select name="decision" label="Decisão" blank="Selecione" options={[{id:"confirmed",name:"Confirmar rito e vincular objeto"},{id:"declined",name:"Encerrar sem confirmar"}]}/>
               <Field name="notes" label="Observações privadas do mestre" max={4000} area/>
