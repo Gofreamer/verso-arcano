@@ -7,7 +7,9 @@ import { conditionKinds, type CharacterCondition } from "@/lib/conditions";
 type Entry=CharacterCondition & {controls?:ReactNode};
 const icons={blessing:Sparkles,curse:Skull,injury:HeartCrack};
 
-export function ConditionBoard({entries,composer,compact=false}: {entries:Entry[];composer?:ReactNode;compact?:boolean}) {
+export function ConditionBoard({entries,composer,compact=false}: {
+  entries:Entry[];composer?:Record<CharacterCondition["kind"],ReactNode>;compact?:boolean;
+}) {
   const [tab,setTab]=useState<CharacterCondition["kind"]>("blessing");
   const [includeEnded,setIncludeEnded]=useState(false);
   const [selected,setSelected]=useState("");
@@ -74,7 +76,7 @@ export function ConditionBoard({entries,composer,compact=false}: {entries:Entry[
     <dialog className="spell-dialog catalog-dialog condition-dialog" data-kind={chosen?.kind ?? tab} ref={dialog} aria-labelledby={titleId} onClose={()=>setSelected("")}>
       {visible && <><header className="spell-dialog-header"><h2 id={titleId}>{composing ? "Nova condição" : chosen?.name}</h2>
         <button className="link-button" type="button" aria-label="Fechar janela" onClick={()=>dialog.current?.close()}><X size={22}/></button>
-      </header><div className="spell-dialog-body">{composing ? composer : chosen && <>
+      </header><div className="spell-dialog-body">{composing ? composer?.[tab] : chosen && <>
         <div className="condition-detail-meta"><span>{conditionKinds.find(kind=>kind.id===chosen.kind)?.singular}</span>
           <span>{chosen.status==="active" ? "Em vigor" : "Encerrada"}</span></div>
         <div className="spell-block"><h4>Efeito</h4><p className="verbatim">{chosen.effect}</p></div>

@@ -3,11 +3,11 @@ import { ConditionBoard } from "./condition-board";
 import { conditionKinds, type CharacterCondition } from "@/lib/conditions";
 import { read, session } from "@/lib/auth";
 
-function ConditionForm({character,entry}: {character:string;entry?:CharacterCondition}) {
+function ConditionForm({character,entry,kind="blessing"}: {character:string;entry?:CharacterCondition;kind?:CharacterCondition["kind"]}) {
   return <Cmd name="condition_save" values={{character,id:entry?.id ?? "",revision:String(entry?.revision ?? 0)}} submit={entry ? "Salvar condição" : "Adicionar condição"} collapseOnSuccess={Boolean(entry)}>
     <div className="fields">
       <Field name="name" label="Nome" value={entry?.name} max={100} required/>
-      <Select name="kind" label="Tipo" value={entry?.kind} options={conditionKinds.map(kind=>({id:kind.id,name:kind.singular}))}/>
+      <Select name="kind" label="Tipo" value={entry?.kind ?? kind} options={conditionKinds.map(kind=>({id:kind.id,name:kind.singular}))}/>
     </div>
     <Field name="effect" label="Efeito sobre o personagem" value={entry?.effect} max={1000} area required/>
     <Field name="description" label="Descrição e detalhes (opcional)" value={entry?.description} max={4000} area/>
@@ -23,7 +23,11 @@ export async function Conditions({character,compact=false}: {character:string;co
   const entries=read(await db.from("conditions").select("*").eq("character_id",character).order("updated_at",{ascending:false}));
   const visible=compact ? entries.filter(entry=>entry.status==="active") : entries;
   return <ConditionBoard compact={compact}
-    composer={master && !compact ? <ConditionForm character={character}/> : undefined}
+    composer={master && !compact ? {
+      blessing:<ConditionForm character={character} kind="blessing"/>,
+      curse:<ConditionForm character={character} kind="curse"/>,
+      injury:<ConditionForm character={character} kind="injury"/>,
+    } : undefined}
     entries={visible.map(entry=>({...entry,controls:master ? <div className="condition-controls">
       <details><summary>Editar condição</summary><ConditionForm key={entry.revision} character={character} entry={entry}/></details>
       {entry.status==="active" && <details><summary>Encerrar condição</summary>
