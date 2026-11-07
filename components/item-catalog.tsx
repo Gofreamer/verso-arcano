@@ -9,7 +9,6 @@ type CatalogItem={id:string;name:string;category:string;rarity:string;weight:num
 function CatalogForm({item}: {item?:CatalogItem}) {
   return <Cmd name={item ? "catalog_edit" : "catalog_create"} values={item ? {id:item.id} : undefined} submit="Salvar item">
     <ItemFields item={item}/>
-    <Field name="stack_limit" label="Máximo por pilha (se empilhável)" value={item && item.stack_limit>1 ? item.stack_limit : 10} type="number" min={2}/>
     <div className="inventory-checks">
       <label><input name="stackable" type="checkbox" defaultChecked={Boolean(item && item.stack_limit>1)}/> Empilhável</label>
       <label><input name="equippable" type="checkbox" defaultChecked={Boolean(item?.slots?.length)}/> Equipável</label>

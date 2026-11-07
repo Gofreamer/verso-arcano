@@ -41,7 +41,7 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
   function int(key:string,min=0,max=2147483647) {
     const raw=p[key];
     const value=Number(raw);
-    demand(raw?.trim() && Number.isInteger(value) && value>=min && value<=max,"Valor numérico fora dos limites permitidos.");
+    demand(raw?.trim() && Number.isSafeInteger(value) && value>=min && value<=max,"Valor numérico fora dos limites permitidos.");
     return value;
   }
   async function find(collection:string,id:string|undefined,message:string) {
@@ -191,7 +191,7 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       const id=previous?.id ?? uuid();
       db.put("item_catalog",id,{
         ...itemDetails(),slots,
-        consumable:p.consumable==="on",stack_limit:p.stackable==="on" ? int("stack_limit",2,100) : 1,
+        consumable:p.consumable==="on",stack_limit:p.stackable==="on" ? Number.MAX_SAFE_INTEGER : 1,
         created_at:previous?.created_at ?? timestamp,catalog_revision:uuid(),
       });
       result={id};
@@ -207,22 +207,15 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
     case "catalog_grant": {
       const ch=await character();
       const entry=await find("item_catalog",p.id,"Item do catálogo indisponível.");
-      const quantity=int("quantity",1,100);
+      const quantity=int("quantity",1,Number.MAX_SAFE_INTEGER);
       const {id,created_at,...definition}=entry;
       const copies=await scoped("items");
-      let remaining=quantity;
-      for(const copy of copies.filter(row=>row.catalog_id===id && (row.catalog_revision ?? null)===(entry.catalog_revision ?? null)
-        && !row.customized && row.quantity>0 && row.quantity<entry.stack_limit && !row.equipped_slot)) {
-        const added=Math.min(remaining,entry.stack_limit-copy.quantity);
-        db.put("items",copy.id,{...copy,quantity:copy.quantity+added});
-        remaining-=added;
-        if(!remaining) break;
-      }
-      while(remaining>0) {
-        const amount=Math.min(remaining,entry.stack_limit);
-        db.put("items",uuid(),{...attach(ch),...definition,catalog_id:id,quantity:amount,created_at:timestamp});
-        remaining-=amount;
-      }
+      const copy=entry.stack_limit>1 ? copies.find(row=>row.catalog_id===id
+        && (row.catalog_revision ?? null)===(entry.catalog_revision ?? null)
+        && !row.customized && row.quantity>0 && !row.equipped_slot
+        && Number.isSafeInteger(row.quantity+quantity)) : undefined;
+      if(copy) db.put("items",copy.id,{...copy,quantity:copy.quantity+quantity});
+      else db.put("items",uuid(),{...attach(ch),...definition,catalog_id:id,quantity,created_at:timestamp});
       break;
     }
     case "item_edit":
@@ -231,7 +224,7 @@ export async function campaignCommand(db:Writer,actor:string,action:string,p:Rec
       const row=await object(target);
       demand(row.quantity>0,"Item indisponível.");
       if(action==="item_edit") {
-        const quantity=int("quantity",1,row.equipped_slot ? 1 : row.stack_limit ?? Math.max(100,row.quantity));
+        const quantity=int("quantity",1,row.equipped_slot ? 1 : Number.MAX_SAFE_INTEGER);
         db.put("items",row.id,{...row,...itemDetails(),quantity,customized:true});
       } else {
         const [bonds,oaths,spells]=await Promise.all([scoped("bonds"),scoped("oaths"),scoped("spells")]);
